@@ -286,6 +286,37 @@
         </div>
     </div>
     <!--End Unicorn-->
+    <!--Shark-->
+    <div class="container">
+      <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                  <source src="./static/videos/shark/combined_depth.mp4" type="video/mp4">
+              </video>
+          </div>
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                  <source src="./static/videos/shark/combined_normal.mp4" type="video/mp4">
+              </video>
+          </div>
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                  <source src="./static/videos/shark/combined_rgb.mp4" type="video/mp4">
+              </video>
+          </div>
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+              <model-viewer 
+                  alt="Shark Mesh"
+                  src="./static/images/pd/shark.gltf"
+                  style="width: 100%; height: 100%;"
+                  camera-controls
+                  camera-orbit="0deg 180deg 1m"
+                  field-of-view="20deg">
+              </model-viewer>
+          </div>
+      </div>
+  </div>
+  <!--End Shark-->
 </section>
 
 
@@ -465,7 +496,7 @@
     <div class="container hero-body">
         <div class="column has-text-centered">
             <h2 class="title is-3">Mesh Comparisons</h2>
-            <p>Reconstruction on the HONKA scene from MuSHRoom dataset</p>
+            <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
         </div>
         <div class="container">
             <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
