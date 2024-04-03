@@ -26,6 +26,10 @@
   <script src="./static/js/bulma-carousel.min.js"></script>
   <script src="./static/js/bulma-slider.min.js"></script>
   <script src="./static/js/index.js"></script>
+  <meta property="og:url"                content="https://maturk.github.io/dn-splatter/" />
+  <meta property="og:title"              content="DN-Splatter" />
+  <meta property="og:description"        content="Depth and normal supervision improves 3DGS novel-view synthesis and mesh reconstruction." />
+  <meta property="og:image"              content="https://maturk.github.io/dn-splatter/static/images/some-preview.png" />
 
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.2.0/model-viewer.min.js"></script>
 </head>
@@ -70,7 +74,7 @@
     <div class="container is-max-desktop">
       <div class="columns is-centered">
         <div class="column has-text-centered">
-          <h1 class="title is-1 publication-title">DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing</h1>
+          <h1 class="title is-1 publication-title"><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong>: Depth and Normal Priors for Gaussian Splatting and Meshing</h1>
           <div class="is-size-5 publication-authors">
             <span class="author-block">
               <a href="https://maturk.github.io">Matias Turkulainen</a><sup>*1</sup>,</span>
@@ -123,7 +127,6 @@
                   </a>
               </span>
             </div>
-
           </div>
         </div>
       </div>
@@ -154,34 +157,31 @@
   </div>
 </section>
 
-<!--test-->
 <section class="hero is-light is-small">
-  <div class="hero-body">
-    <div class="columns is-centered">
-      <div class="content" style="display: flex;">
-        <div style="flex: 1;">
-          <div class="twentytwenty-container" style="width: 250px;">
-            <img src="static/images/comparisons/vr/splatfacto_depth_long_capture_frame_00081.png" alt="Splatfacto" class="img-responsive%;"  >
-            <img src="static/images/comparisons/vr/our_depth_long_capture_frame_00081.png" alt="DN-Splatter" class="img-responsive%;"  >
-          </div> 
+  <div class="container hero-body">
+    <div class="columns is-multiline is-centered">
+      <div class="column is-one-quarter-desktop has-text-centered">
+        <div class="twentytwenty-container twentytwenty-custom">
+          <img src="static/images/comparisons/vr/splatfacto_depth_long_capture_frame_00081.png" alt="Splatfacto"  >
+          <img src="static/images/comparisons/vr/our_depth_long_capture_frame_00081.png" alt="DN-Splatter"  >
         </div>
-        <div style="flex: 1;">
-          <div class="twentytwenty-container" style="width: 250px;">
-            <img src="static/images/comparisons/vr/splatfacto_normal_long_capture_frame_00081.png" alt="Splatfacto" class="img-responsive%;" >
-            <img src="static/images/comparisons/vr/our_normal_long_capture_frame_00081.png" alt="DN-Splatter" class="img-responsive%;">
-          </div> 
+      </div>
+      <div class="column is-one-quarter-desktop has-text-centered">
+        <div class="twentytwenty-container twentytwenty-custom">
+          <img src="static/images/comparisons/vr/splatfacto_normal_long_capture_frame_00081.png" alt="Splatfacto" >
+          <img src="static/images/comparisons/vr/our_normal_long_capture_frame_00081.png" alt="DN-Splatter" >
         </div>
-        <div style="flex: 1;">
-          <div class="twentytwenty-container" style="width: 250px;">
-            <img src="static/images/comparisons/vr/splatfacto_long_capture_frame_00081.png" alt="Splatfacto" class="img-responsive%;">
-            <img src="static/images/comparisons/vr/our_long_capture_frame_00081.png" alt="DN-Splatter" class="img-responsive%;">
-          </div> 
+      </div>
+      <div class="column is-one-quarter-desktop has-text-centered">
+        <div class="twentytwenty-container twentytwenty-custom">
+          <img src="static/images/comparisons/vr/splatfacto_long_capture_frame_00081.png" alt="Splatfacto" >
+          <img src="static/images/comparisons/vr/our_long_capture_frame_00081.png" alt="DN-Splatter" >
         </div>
-        <div style="flex: 1;">
-          <div class="twentytwenty-container" style="width: 250px;">
-            <img src="static/images/comparisons/vr/splatfacto_mesh.png" alt="Splatfacto" class="img-responsive%;">
-            <img src="static/images/comparisons/vr/our_mesh.png" alt="DN-Splatter" class="img-responsive%;">
-          </div> 
+      </div>
+      <div class="column is-one-quarter-desktop has-text-centered">
+        <div class="twentytwenty-container twentytwenty-custom">
+          <img src="static/images/comparisons/vr/splatfacto_mesh.png" alt="Splatfacto" >
+          <img src="static/images/comparisons/vr/our_mesh.png" alt="DN-Splatter" >
         </div>
       </div>
     </div>
@@ -218,336 +218,282 @@
 </section>
 
 <section class="hero is-light is-small">
-  <div class="container">
-    <div class="column has-text-centered">
-      <h2 class="title is-3">Videos</h2>
-    </div>
-    <div class="column content has-text-centered">
-    <p>Casually captured iPhone 13 Pro data processed with DN-Splatter. We visualize depth, normal, and rgb renders as well as exported Poisson meshes and compare against the Splatfacto baseline method. </p>
-    </div>
     <!--Vase-->
-    <div class="container" style="width: 800px;">
-      <div class="columns is-centered" >
-        <div class="column content has-text-centered" >
-          <video autoplay muted loop playsinline height="100%" class="other-video">
-            <source src="./static/videos/vase/combined_depth.mp4"
-                    type="video/mp4">
-          </video>
+    <div class="container">
+        <div class="column has-text-centered">
+            <h2 class="title is-3">Videos</h2>
         </div>
-
-        <div class="column">
-          <div class="columns is-centered">
-            <div class="column content">
-              <video autoplay muted loop playsinline height="100%" class="other-video">
-                <source src="./static/videos/vase/combined_normal.mp4"
-                        type="video/mp4">
-              </video>
+        <div class="column content has-text-centered">
+            <p>Casually captured iPhone 13 Pro data processed with <strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong>. We visualize depth, normal, and rgb renders as well as exported Poisson meshes and compare against the Splatfacto baseline method. </p>
+        </div>
+        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/vase/combined_depth.mp4" type="video/mp4">
+                </video>
             </div>
-          </div>
-        </div>
-
-        <div class="column">
-          <div class="columns is-centered">
-            <div class="column content">
-              <video autoplay muted loop playsinline height="100%" class="other-video">
-                <source src="./static/videos/vase/combined_rgb.mp4"
-                        type="video/mp4">
-              </video>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/vase/combined_normal.mp4" type="video/mp4">
+                </video>
             </div>
-          </div>
-        </div>
-        
-        <div class="column">
-            <div class="columns is-centered">
-              <div class="column content">
-                <style>
-                model-viewer {
-                    width: 200px;
-                    height: 310px;
-                }
-                </style>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/vase/combined_rgb.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
                 <model-viewer 
-                alt="Vase Mesh"
-                src="./static/images/pd/vase.gltf" 
-                camera-controls touch-action="pan-y"
-                camera-orbit="0deg 180deg 1m"
-                field-of-view="10deg"
-                >
-            </model-viewer>
+                    alt="Vase Mesh"
+                    src="./static/images/pd/vase.gltf"
+                    style="width: 100%; height: 100%;"
+                    camera-controls
+                    camera-orbit="0deg 180deg 1m"
+                    field-of-view="15deg">
+                </model-viewer>
             </div>
         </div>
     </div>
-    <!--End vase-->
-  </div>
-
-  <!--Unicorn-->
-  <div class="container">
-    <div class="container" style="width: 800px;">
-      <div class="columns is-centered" >
-        <div class="column content has-text-centered" >
-          <video autoplay muted loop playsinline height="100%" class="other-video">
-            <source src="./static/videos/unicorn/combined_depth.mp4"
-                    type="video/mp4">
-          </video>
-        </div>
-        <div class="column">
-          <div class="columns is-centered">
-            <div class="column content">
-              <video autoplay muted loop playsinline height="100%" class="other-video">
-                <source src="./static/videos/unicorn/combined_normal.mp4"
-                        type="video/mp4">
-              </video>
+    <!--End Vase-->
+    <!--Unicorn-->
+    <div class="container">
+        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/unicorn/combined_depth.mp4" type="video/mp4">
+                </video>
             </div>
-          </div>
-        </div>
-
-        <div class="column">
-          <div class="columns is-centered">
-            <div class="column content">
-              <video autoplay muted loop playsinline height="100%" class="other-video">
-                <source src="./static/videos/unicorn/combined_rgb.mp4"
-                        type="video/mp4">
-              </video>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/unicorn/combined_normal.mp4" type="video/mp4">
+                </video>
             </div>
-          </div>
-        </div>
-        
-        <div class="column">
-            <div class="columns is-centered">
-              <div class="column content">
-                <style>
-                model-viewer {
-                    width: 200px;
-                    height: 310px;
-                }
-                </style>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                    <source src="./static/videos/unicorn/combined_rgb.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
                 <model-viewer 
-                alt="Unicorn Mesh"
-                src="./static/images/pd/unicorn.gltf" 
-                camera-controls touch-action="pan-z"
-                camera-orbit="0deg 180deg 1m"
-                field-of-view="20deg"
-                >
-            </model-viewer>
+                    alt="Unicorn Mesh"
+                    src="./static/images/pd/unicorn.gltf"
+                    style="width: 100%; height: 100%;"
+                    camera-controls
+                    camera-orbit="0deg 180deg 1m"
+                    field-of-view="20deg">
+                </model-viewer>
             </div>
-        </div>
         </div>
     </div>
     <!--End Unicorn-->
-
-    <!--Shark-->
-  <div class="container" style="width: 800px;">
-    <div class="columns is-centered" >
-      <div class="column content has-text-centered" >
-        <video autoplay muted loop playsinline height="100%" class="other-video">
-          <source src="static/videos/shark/full_depth.mp4"
-                  type="video/mp4">
-        </video>
-      </div>
-
-      <div class="column">
-        <div class="columns is-centered">
-          <div class="column content">
-            <video autoplay muted loop playsinline height="100%" class="other-video">
-              <source src="static/videos/shark/full_normal.mp4"
-                      type="video/mp4">
-            </video>
-          </div>
-        </div>
-      </div>
-
-      <div class="column">
-        <div class="columns is-centered">
-          <div class="column content">
-            <video autoplay muted loop playsinline height="100%" class="other-video">
-              <source src="static/videos/shark/full.mp4"
-                      type="video/mp4">
-            </video>
-          </div>
-        </div>
-      </div>
-      
-      <div class="column">
-          <div class="columns is-centered">
-            <div class="column content">
-              <style>
-              model-viewer {
-                  width: 200px;
-                  height: 310px;
-              }
-              </style>
-              <model-viewer 
-              alt="Vase Mesh"
-              src="./static/images/pd/shark.gltf" 
-              camera-controls touch-action="pan-y"
-              camera-orbit="0deg 180deg 1m"
-              field-of-view="20deg"
-              >
-          </model-viewer>
-          </div>
-      </div>
-    </div>
-    </div>
-    <!--End Shark-->
-</div>
 </section>
 
 
 <section class="section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered">
-      <!-- Visual Effects. -->
-      <div class="column">
-        <div class="content">
-          <h2 class="title is-3">More visuals</h2>
-          
-          <!--Depth and RGB Reconstruction-->
-            <h3 class="title is-5">Depth and RGB renders:</h3>
-            <p>Novel RGB and depth views from iPhone captured data.</p>
-            <div class="container">
-                <div class="content" style="display: flex; justify-content: space-between;">
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/comparisons/sauna/3_long_capture_frame_00448.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/comparisons/sauna/4_long_capture_frame_00448.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/comparisons/sauna/5_long_capture_frame_00448.jpg" alt="iPhone TOF" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/comparisons/sauna/9_long_capture_frame_00448.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/comparisons/sauna/10_long_capture_frame_00448.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/comparisons/sauna/11_long_capture_frame_00448.jpg" alt="iPhone RGB" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/comparisons/table/3_short_capture_frame_00037.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/comparisons/table/4_short_capture_frame_00037.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/comparisons/table/5_short_capture_frame_00037.jpg" alt="iPhone TOF" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/comparisons/table/9_short_capture_frame_00037.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/comparisons/table/10_short_capture_frame_00037.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/comparisons/table/11_short_capture_frame_00037.jpg" alt="iPhone RGB" class="img-responsive%;">
-                        </div> 
-                    </div>
-                </div>  
-            </div>
-
-            <!--Normal Reconstruction-->
-            <h3 class="title is-5">Normal renders:</h3>
-            <p>Novel normal views from iPhone captured data.</p>
-            <div class="container">
-                <div class="content" style="display: flex; justify-content: space-between;">
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/normal/sauna_chair/sauna_rgb_long_capture_frame_00448.png" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/normal/sauna_chair/sauna_our_long_capture_frame_00448.png" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/normal/sauna_chair/sauna_gt_long_capture_frame_00448.png" alt="Monocular normal" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/normal/koivu/koivu_rgb_short_capture_frame_00037.png" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/normal/koivu/koivu_our_short_capture_frame_00037.png" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/normal/koivu/koivu_gt_short_capture_frame_00037.png" alt="Monocular normal" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/normal/vr/vr_rgb_short_capture_frame_00069.png" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/normal/vr/vr_our_short_capture_frame_00069.png" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/normal/vr/vr_gt_short_capture_frame_00069.png" alt="Monocular normal" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/normal/coffee/coffee_rgb_long_capture_frame_00146.png" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/normal/coffee/coffee_our_long_capture_frame_00146.png" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/normal/coffee/coffee_gt_long_capture_frame_00146.png" alt="Monocular normal" class="img-responsive%;">
-                        </div> 
-                    </div>
-                </div>  
-            </div>
-
-            <!--Mesh reconstruction-->
-            <h3 class="title is-5">Room scale mesh reconstruction:</h3>
-            <p>Real world room scale reconstruction using Poisson on the MuSHRoom dataset.</p>
-            <div class="container">
-                <div class="content" style="display: flex; justify-content: space-between;">
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/sofa2/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa2/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa2/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/sofa/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/faucet/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/faucet/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/faucet/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/table/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/table/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/table/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    
-                </div>  
-            </div>
-            <div class="container">
-                <div class="content" style="display: flex; justify-content: space-between;">
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/kitchen/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/kitchen/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/kitchen/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/takka/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/takka/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/takka/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/floor/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/floor/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/floor/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                    <div style="flex: 1;">
-                        <div class="twentytwenty-container" style="width: 250px;">
-                        <img src="static/images/meshes/sofa3/rgb.jpg" alt="Splatfacto" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa3/our.jpg" alt="DN-Splatter" class="img-responsive%;">
-                        <img src="static/images/meshes/sofa3/gt.jpg" alt="GT" class="img-responsive%;">
-                        </div> 
-                    </div>
-                </div>  
-            </div>
-
-        <!---------->
+    <div class="container hero-body">
+        <div class="column has-text-centered">
+            <h2 class="title is-3">More Visuals</h2>
         </div>
-      </div>
-  </div>
+        <!--RGB/Depths-->
+        <p><strong>Depth estimation and novel-view synthesis:</strong></p>
+        <div class="columns is-multiline is-centered">
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/comparisons/sauna/3_long_capture_frame_00448.jpg" alt="Splatfacto"  >
+                    <img src="static/images/comparisons/sauna/4_long_capture_frame_00448.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/comparisons/sauna/5_long_capture_frame_00448.jpg" alt="iPhone depth"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/comparisons/sauna/9_long_capture_frame_00448.jpg" alt="Splatfacto"  >
+                    <img src="static/images/comparisons/sauna/10_long_capture_frame_00448.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/comparisons/sauna/11_long_capture_frame_00448.jpg" alt="iPhone RGB"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/comparisons/table/3_short_capture_frame_00037.jpg" alt="Splatfacto"  >
+                    <img src="static/images/comparisons/table/4_short_capture_frame_00037.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/comparisons/table/5_short_capture_frame_00037.jpg" alt="iPhone depth"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/comparisons/table/9_short_capture_frame_00037.jpg" alt="Splatfacto"  >
+                    <img src="static/images/comparisons/table/10_short_capture_frame_00037.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/comparisons/table/11_short_capture_frame_00037.jpg" alt="iPhone RGB"  >
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--End RGB/Depths-->
+        <!--Normals-->
+        <p><strong>Normal estimation:</strong></p>
+        <div class="columns is-multiline is-centered">
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/normal/coffee/coffee_rgb_long_capture_frame_00146.png" alt="Splatfacto"  >
+                    <img src="static/images/normal/coffee/coffee_our_long_capture_frame_00146.png" alt="DN-Splatter"  >
+                    <img src="static/images/normal/coffee/coffee_gt_long_capture_frame_00146.png" alt="monocular GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/normal/koivu/koivu_rgb_short_capture_frame_00037.png" alt="Splatfacto"  >
+                    <img src="static/images/normal/koivu/koivu_our_short_capture_frame_00037.png" alt="DN-Splatter"  >
+                    <img src="static/images/normal/koivu/koivu_gt_short_capture_frame_00037.png" alt="monocular GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/normal/sauna_chair/sauna_rgb_long_capture_frame_00448.png" alt="Splatfacto"  >
+                    <img src="static/images/normal/sauna_chair/sauna_our_long_capture_frame_00448.png" alt="DN-Splatter"  >
+                    <img src="static/images/normal/sauna_chair/sauna_gt_long_capture_frame_00448.png" alt="monocular GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/normal/vr/vr_rgb_short_capture_frame_00069.png" alt="Splatfacto"  >
+                    <img src="static/images/normal/vr/vr_our_short_capture_frame_00069.png" alt="DN-Splatter"  >
+                    <img src="static/images/normal/vr/vr_gt_short_capture_frame_00069.png" alt="monocular GT"  >
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--End Normals-->
+        <!--Meshes row 1-->
+        <p><strong>Mesh reconstruction on real-world indoor scenes: </strong>MuSHRoom dataset reconstructions with iPhone data.</p>
+        <div class="columns is-multiline is-centered">
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/faucet/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/faucet/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/faucet/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/meshes/kitchen/rgb.jpg" alt="Splatfacto"  >
+                    <img src="static/images/meshes/kitchen/our.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/meshes/kitchen/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/floor/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/floor/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/floor/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/sofa/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/sofa/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/sofa/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--End meshes row 1-->
+        <!--Meshes row 2-->
+        <div class="columns is-multiline is-centered">
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/sofa2/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/sofa2/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/sofa2/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                    <img src="static/images/meshes/table/rgb.jpg" alt="Splatfacto"  >
+                    <img src="static/images/meshes/table/our.jpg" alt="DN-Splatter"  >
+                    <img src="static/images/meshes/table/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/takka/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/takka/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/takka/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-quarter-desktop has-text-centered">
+                <div class="column is-one-quarter-desktop has-text-centered">
+                    <div class="twentytwenty-container twentytwenty-custom">
+                        <img src="static/images/meshes/sofa3/rgb.jpg" alt="Splatfacto"  >
+                        <img src="static/images/meshes/sofa3/our.jpg" alt="DN-Splatter"  >
+                        <img src="static/images/meshes/sofa3/gt.jpg" alt="GT"  >
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--End meshes row 2-->
+    </div>
 </section>
 
+
+<section class="section">
+    <div class="container hero-body">
+        <div class="column has-text-centered">
+            <h2 class="title is-3">Mesh Comparisons</h2>
+            <p>Reconstruction on the HONKA scene from MuSHRoom dataset</p>
+        </div>
+        <div class="container">
+            <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+                <div class="column has-text-centered" style="flex: 1; width: 800px">
+                    <p>Splatfacto</p>
+                    <model-viewer 
+                        alt="Unicorn Mesh"
+                        src="./static/images/pd/rgb.gltf"
+                        style="width: 100%; height: 100%;"
+                        camera-controls
+                        camera-orbit="0deg 180deg 1m"
+                        field-of-view="30deg">
+                    </model-viewer>
+                </div>
+                <div class="column has-text-centered" style="flex: 1; width: 800px">
+                    <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+                    <model-viewer 
+                        alt="Unicorn Mesh"
+                        src="./static/images/pd/our.gltf"
+                        style="width: 100%; height: 100%;"
+                        camera-controls
+                        camera-orbit="0deg 180deg 1m"
+                        field-of-view="30deg">
+                    </model-viewer>
+                </div>
+            </div>
+    </div>
+</section>
 
 <section class="section">
   <div class="container is-max-desktop">
@@ -569,13 +515,12 @@
           <br><br>
           <p style="margin-bottom: 5px;"><strong>Normals:</strong></p>
           <a href="https://nju-3dv.github.io/projects/Relightable3DGaussian/">Relightable 3D Gaussian</a><br>
-          <a href="https://nju-3dv.github.io/projects/Relightable3DGaussian/">GS-IR: 3D Gaussian Splatting for Inverse Rendering</a>
+          <a href="https://github.com/lzhnb/GS-IR">GS-IR: 3D Gaussian Splatting for Inverse Rendering</a>
           <br><br>
         </div>
       </div>
     </div>
     <!--/ Concurrent Work. -->
-
   </div>
 </section>
 

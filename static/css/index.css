@@ -155,3 +155,22 @@ body {
 #interpolation-image-wrapper img {
   border-radius: 5px;
 }
+
+.twentytwenty-custom {
+  width: 250px;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  
+}
+
+@media (max-width: 767px) {
+  .twentytwenty-custom  {
+    width: 400px !important;
+    margin: 0 auto; /* Center the element */
+  }
+}
+
+.small-model-viewer {
+  width: 200px;
+  height: 310px;
+}

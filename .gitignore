@@ -1,2 +1,7 @@
 .DS_store
 .idea
+datasets
+dn_splatter.egg-info/
+nerfstudio/
+omnidata_ckpt/
+outputs/
