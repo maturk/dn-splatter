@@ -508,7 +508,7 @@
             <p>Splatfacto</p>
             <model-viewer 
                 alt="Unicorn Mesh"
-                src="./static/images/pd/rgb.gltf"
+                src="./static/images/pd/splatfacto_honka.gltf"
                 style="width: 100%; height: 100%;"
                 camera-controls
                 camera-orbit="0deg 180deg 1m"
@@ -519,7 +519,7 @@
             <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
             <model-viewer 
                 alt="Unicorn Mesh"
-                src="./static/images/pd/our.gltf"
+                src="./static/images/pd/dn_splatter_honka.gltf"
                 style="width: 100%; height: 100%;"
                 camera-controls
                 camera-orbit="0deg 180deg 1m"
@@ -528,7 +528,55 @@
           </div>
         </div>
       </div>
+      <div class="column has-text-centered">
+        <br>
+        <p>Reconstruction on the Sauna scene from MuSHRoom dataset</p>
+    </div>
+    <div class="container">
+        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <p>Splatfacto</p>
+                <model-viewer 
+                    alt="Unicorn Mesh"
+                    src="static/images/pd/splatfacto_sauna.gltf"
+                    style="width: 100%; height: 100%;"
+                    camera-controls
+                    camera-orbit="0deg 180deg 1m"
+                    field-of-view="30deg">
+                </model-viewer>
+            </div>
+            <div class="column has-text-centered" style="flex: 1; width: 800px">
+                <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+                <model-viewer 
+                    alt="Unicorn Mesh"
+                    src="static/images/pd/dn_splatter_sauna.gltf"
+                    style="width: 100%; height: 100%;"
+                    camera-controls
+                    camera-orbit="0deg 180deg 1m"
+                    field-of-view="30deg">
+                </model-viewer>
+            </div>
+        </div>
+    </div>
       <!--End mesh comparisons-->
+    </div>
+</section>
+
+<section class="section">
+    <div class="container hero-body">
+        <div class="column has-text-centered">
+            <h2 class="title is-3">Normal Supervision Comparison</h2>
+            <p>Comparison of normal supervision with the gradient of rendered depths and monocular normal supervision.</p>
+        </div>
+        <div class="container">
+            <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 400px;">
+                <div class="column has-text-centered" style="flex: 1; width: 800px">
+                    <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                        <source src="./static/videos/vase/vase_compare_normal_supervision_compressed.mp4" type="video/mp4">
+                    </video>
+                </div>
+        </div>
+        
     </div>
 </section>
 
@@ -554,6 +602,10 @@
           <a href="https://nju-3dv.github.io/projects/Relightable3DGaussian/">Relightable 3D Gaussian</a><br>
           <a href="https://github.com/lzhnb/GS-IR">GS-IR: 3D Gaussian Splatting for Inverse Rendering</a>
           <br><br>
+          <p style="margin-bottom: 5px;"><strong>3DGS from casual video:</strong></p>
+          <a href="https://github.com/SpectacularAI/3dgs-deblur">Gaussian Splatting on the Move:
+            Blur and Rolling Shutter Compensation for Natural Camera Motion</a><br>
+          <a href="https://github.com/WU-CVGL/BAD-Gaussians">BAD-Gaussians: Bundle-Adjusted Deblur Gaussian Splatting</a>
         </div>
       </div>
     </div>
