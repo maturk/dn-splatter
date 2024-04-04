@@ -162,7 +162,7 @@
 
 <section class="hero is-light is-small">
   <div class="container hero-body">
-    <div class="columns is-multiline is-centered">
+    <div class="columns is-centered">
       <div class="column is-one-quarter-desktop has-text-centered">
         <div class="twentytwenty-container twentytwenty-custom">
           <img src="static/images/comparisons/vr/splatfacto_depth_long_capture_frame_00081.png" alt="Splatfacto"  >
@@ -497,35 +497,38 @@
 
 <section class="section">
     <div class="container hero-body">
-        <div class="column has-text-centered">
-            <h2 class="title is-3">Mesh Comparisons</h2>
-            <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
+      <!--Mesh Comparisons-->
+      <div class="column has-text-centered">
+          <h2 class="title is-3">Mesh Comparisons</h2>
+          <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
+      </div>
+      <div class="container">
+        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+            <p>Splatfacto</p>
+            <model-viewer 
+                alt="Unicorn Mesh"
+                src="./static/images/pd/rgb.gltf"
+                style="width: 100%; height: 100%;"
+                camera-controls
+                camera-orbit="0deg 180deg 1m"
+                field-of-view="30deg">
+            </model-viewer>
+          </div>
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+            <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+            <model-viewer 
+                alt="Unicorn Mesh"
+                src="./static/images/pd/our.gltf"
+                style="width: 100%; height: 100%;"
+                camera-controls
+                camera-orbit="0deg 180deg 1m"
+                field-of-view="30deg">
+            </model-viewer>
+          </div>
         </div>
-        <div class="container">
-            <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
-                <div class="column has-text-centered" style="flex: 1; width: 800px">
-                    <p>Splatfacto</p>
-                    <model-viewer 
-                        alt="Unicorn Mesh"
-                        src="./static/images/pd/rgb.gltf"
-                        style="width: 100%; height: 100%;"
-                        camera-controls
-                        camera-orbit="0deg 180deg 1m"
-                        field-of-view="30deg">
-                    </model-viewer>
-                </div>
-                <div class="column has-text-centered" style="flex: 1; width: 800px">
-                    <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
-                    <model-viewer 
-                        alt="Unicorn Mesh"
-                        src="./static/images/pd/our.gltf"
-                        style="width: 100%; height: 100%;"
-                        camera-controls
-                        camera-orbit="0deg 180deg 1m"
-                        field-of-view="30deg">
-                    </model-viewer>
-                </div>
-            </div>
+      </div>
+      <!--End mesh comparisons-->
     </div>
 </section>
 
