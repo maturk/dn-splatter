@@ -1,4 +1,4 @@
-""" Generate normals from depths or pretrained model Omnidata model
+"""Generate monocular normal estimates from Omnidata model.
 
 Note, parts of this script are adapted from https://github.com/autonomousvision/monosdf
 """
@@ -40,11 +40,9 @@ step = 96  # need to be smaller than image_size
 
 @dataclass
 class NormalsFromPretrained:
-    """Generate monocular depth estimates for input images"""
+    """Generate monocular normal estimates for input images"""
 
-    data_dir: Path = (
-        "/home/turkulm1/git/dn_splatter/datasets/tankandtemples/intermediate/Family"
-    )
+    data_dir: Path
     """Path to data root"""
     transforms_name: str = "transforms.json"
     """Name of transformation json file"""
