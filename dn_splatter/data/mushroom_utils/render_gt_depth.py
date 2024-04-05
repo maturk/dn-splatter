@@ -19,15 +19,9 @@ OPENGL_TO_OPENCV = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 
 
 
 def main(
-    input_dir: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/vr_room/iphone/long_capture/"
-    ),
-    gt_mesh_path: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/vr_room/gt_mesh_clean.ply"
-    ),
-    transformation_path: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/vr_room/icp_iphone.json"
-    ),
+    input_dir: Path,
+    gt_mesh_path: Path,
+    transformation_path: Path,
 ):
     mesh = trimesh.load(os.path.join(gt_mesh_path), force="mesh", process=False)
 

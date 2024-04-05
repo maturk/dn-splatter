@@ -92,7 +92,7 @@ class NormalsFromPretrained:
 
 def run_monocular_normals(
     images: List[Path],
-    save_path: Path = Path,
+    save_path: Path,
     omnidata_pretrained_weights_path: Path = Path("omnidata_ckpt"),
 ) -> None:
     """Generates normal maps from pretrained omnidata
@@ -229,12 +229,8 @@ def run_monocular_normals_hd(
 
 
 def normals_from_pretrain(
-    image_folder: Path = Path(
-        "datasets/tankandtemples/advanced/Courtroom/highres_tmp/images"
-    ),  # Path to the folder containing the images crops
-    save_path: Path = Path(
-        "datasets/tankandtemples/advanced/Courtroom/highres_tmp/normals_patches"
-    ),  # Path to the folder where the crops normals will be saved
+    image_folder: Path,
+    save_path: Path,
     omnidata_pretrained_weights_path: Path = Path("omnidata_ckpt"),
 ) -> None:
     """Generates normal maps from pretrained omnidata

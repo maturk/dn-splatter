@@ -112,15 +112,9 @@ class NormalShader(nn.Module):
 
 
 def main(
-    input_dir: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/activity/kinect/long_capture/"
-    ),
-    gt_mesh_path: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/activity/gt_mesh_clean.ply"
-    ),
-    transformation_path: Path = Path(
-        "/home/nvme/kqxure/code/updating_models/nerfstudio/room_datasets/activity/icp_kinect.json"
-    ),
+    input_dir: Path,
+    gt_mesh_path: Path,
+    transformation_path: Path,
 ):
     mesh = trimesh.load(os.path.join(gt_mesh_path), force="mesh", process=False)
 

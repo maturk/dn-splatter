@@ -1,11 +1,11 @@
-import numpy as np
-from scipy.spatial import cKDTree
-import open3d as o3d
-import trimesh
 import json
-import tyro
-from pathlib import Path
 import os
+from pathlib import Path
+
+import numpy as np
+import open3d as o3d
+import tyro
+from scipy.spatial import cKDTree
 
 
 def open3d_mesh_from_trimesh(tri_mesh):
@@ -39,9 +39,7 @@ def calculate_completeness(
 
 
 def main(
-    export_pd: Path = Path(
-        "room_datasets/activity/iphone/long_capture/pointcloud_train_downsample.ply"
-    ),
+    export_pd: Path,
     path_to_room: Path = Path("room_datasets/activity"),
     device_type: Path = Path("iphone"),
     evaluate_protocol: str = "within",
