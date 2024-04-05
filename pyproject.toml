@@ -1,0 +1,38 @@
+[project]
+name = "dn-splatter"
+description = "Depth and normal priors for 3D Gaussian splatting and meshing"
+version = "0.0.1"
+
+dependencies = ["nerfstudio >= 1.0.2",
+                "gsplat >= 0.1.9",
+                "black == 22.3.0",
+                "natsort",
+                "pymeshlab>=2022.2.post2; platform_machine != 'arm64' and platform_machine != 'aarch64'",
+                "pytest",
+                "vdbfusion",
+                "PyMCubes",
+                "omnidata-tools",
+                "pytorch-lightning",
+                "torch"]
+
+[tool.setuptools.packages.find]
+include = ["dn_splatter*"]
+
+[project.entry-points.'nerfstudio.method_configs']
+dn_splatter = 'dn_splatter.dn_config:dn_splatter'
+#g-nerfacto = 'dn_splatter.eval.eval_configs:gnerfacto'
+#g-depthfacto = 'dn_splatter.eval.eval_configs:gdepthfacto'
+#g-neusfacto = 'dn_splatter.eval.eval_configs:gneusfacto'
+
+[project.entry-points.'nerfstudio.dataparser_configs']
+mushroom = 'dn_splatter:MushroomDataParserSpecification'
+replica = 'dn_splatter:ReplicaDataParserSpecification'
+nrgbd = 'dn_splatter:NRGBDDataParserSpecification'
+gsdf = 'dn_splatter:GSDFStudioDataParserSpecification'
+scannetpp = 'dn_splatter:ScanNetppDataParserSpecification'
+coolermap = 'dn_splatter:CoolerMapDataParserSpecification'
+normal-nerfstudio = 'dn_splatter:NormalNerfstudioSpecification'
+
+[project.scripts]
+# export mesh scripts
+gs-mesh = "dn_splatter.export_mesh:entrypoint"
