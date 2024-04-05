@@ -1,0 +1,32 @@
+[project]
+name = "dn-splatter"
+version = "0.1.0"
+description = "Depth and normal priors for 3D Gaussian splatting and meshing"
+channels = ["nvidia/label/cuda-11.8.0", "nvidia", "conda-forge", "pytorch"]
+platforms = ["linux-64"]
+
+[tasks]
+download-omnidata = {cmd="python dn_splatter/data/download_scripts/download_omnidata.py", outputs=["omnidata_ckpt/omnidata_dpt_normal_v2.ckpt"]}
+download-data-sample = {cmd="python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/room_datasets/koivu/iphone/*"]}
+train-mushroom-sample = """
+    ns-train dn-splatter \
+    --pipeline.model.use-depth-loss True \
+    --pipeline.model.sensor-depth-lambda 0.2 \
+    --pipeline.model.use-depth-smooth-loss True \
+    --pipeline.model.use-normal-loss True \
+    --pipeline.model.normal-supervision mono \
+    mushroom --data datasets/room_datasets/koivu --mode iphone
+"""
+train-example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample", "train-mushroom-sample"]}
+
+[dependencies]
+python = "3.10.*"
+pip = ">=23.3.2,<23.4"
+cuda = {version = "*", channel="nvidia/label/cuda-11.8.0"}
+pytorch-cuda = {version = "11.8.*", channel="pytorch"}
+pytorch = {version = ">=2.2.0,<2.3", channel="pytorch"}
+torchvision = {version = ">=0.17.0,<0.18", channel="pytorch"}
+open3d = ">=0.18.0,<0.19"
+
+[pypi-dependencies]
+dn-splatter = { path = ".", editable = true}
