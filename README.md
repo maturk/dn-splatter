@@ -4,7 +4,7 @@
 
 This is repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
 
-
+https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
 
 <!-- CONTENTS -->
 <details open="open" style='padding: 10px; border-radius:5px 30px 30px 5px; border-style: solid; border-width: 1px;'>
