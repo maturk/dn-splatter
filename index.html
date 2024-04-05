@@ -240,7 +240,7 @@
             <div class="column has-text-centered" style="flex: 1; width: 800px">
                 <model-viewer 
                     alt="Vase Mesh"
-                    src="./static/images/pd/vase.gltf"
+                    src="./static/images/pd/vase_compress.glb"
                     style="width: 100%; height: 100%;"
                     camera-controls
                     camera-orbit="0deg 180deg 1m"
@@ -271,7 +271,7 @@
             <div class="column has-text-centered" style="flex: 1; width: 800px">
                 <model-viewer 
                     alt="Unicorn Mesh"
-                    src="./static/images/pd/unicorn.gltf"
+                    src="./static/images/pd/unicorn_compress.glb"
                     style="width: 100%; height: 100%;"
                     camera-controls
                     camera-orbit="0deg 180deg 1m"
@@ -302,7 +302,7 @@
           <div class="column has-text-centered" style="flex: 1; width: 800px">
               <model-viewer 
                   alt="Shark Mesh"
-                  src="./static/images/pd/shark.gltf"
+                  src="./static/images/pd/shark_compress.glb"
                   style="width: 100%; height: 100%;"
                   camera-controls
                   camera-orbit="0deg 180deg 1m"
@@ -488,37 +488,68 @@
 
 
 <section class="section">
-    <div class="container hero-body">
-        <div class="column has-text-centered">
-            <h2 class="title is-3">Mesh Comparisons</h2>
-            <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
-        </div>
-        <div class="container">
-            <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
-                <div class="column has-text-centered" style="flex: 1; width: 800px">
-                    <p>Splatfacto</p>
-                    <model-viewer 
-                        alt="Unicorn Mesh"
-                        src="./static/images/pd/rgb.gltf"
-                        style="width: 100%; height: 100%;"
-                        camera-controls
-                        camera-orbit="0deg 180deg 1m"
-                        field-of-view="30deg">
-                    </model-viewer>
-                </div>
-                <div class="column has-text-centered" style="flex: 1; width: 800px">
-                    <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
-                    <model-viewer 
-                        alt="Unicorn Mesh"
-                        src="./static/images/pd/our.gltf"
-                        style="width: 100%; height: 100%;"
-                        camera-controls
-                        camera-orbit="0deg 180deg 1m"
-                        field-of-view="30deg">
-                    </model-viewer>
-                </div>
-            </div>
+  <div class="container hero-body">
+      <div class="column has-text-centered">
+          <h2 class="title is-3">Mesh Comparisons</h2>
+          <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
+      </div>
+      <div class="container">
+          <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+              <div class="column has-text-centered" style="flex: 1; width: 800px">
+                  <p>Splatfacto</p>
+                  <model-viewer 
+                      alt="honka Mesh"
+                      src="static/images/pd/splatfacto_honka_compress.glb"
+                      style="width: 100%; height: 100%;"
+                      camera-controls
+                      camera-orbit="0deg 180deg 1m"
+                      field-of-view="30deg">
+                  </model-viewer>
+              </div>
+              <div class="column has-text-centered" style="flex: 1; width: 800px">
+                  <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+                  <model-viewer 
+                      alt="honka Mesh"
+                      src="static/images/pd/dn_splatter_honka_compress.glb"
+                      style="width: 100%; height: 100%;"
+                      camera-controls
+                      camera-orbit="0deg 180deg 1m"
+                      field-of-view="30deg">
+                  </model-viewer>
+              </div>
+          </div>
+  </div>
+
+<div class="column has-text-centered">
+<h2 class="title is-3">Mesh Comparisons</h2>
+<p>Reconstruction on the Sauna scene from MuSHRoom dataset</p>
+</div>
+<div class="container">
+<div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+    <div class="column has-text-centered" style="flex: 1; width: 800px">
+        <p>Splatfacto</p>
+        <model-viewer 
+            alt="sauna Mesh"
+            src="static/images/pd/splatfacto_sauna_compress.glb"
+            style="width: 100%; height: 100%;"
+            camera-controls
+            camera-orbit="0deg 180deg 1m"
+            field-of-view="30deg">
+        </model-viewer>
     </div>
+    <div class="column has-text-centered" style="flex: 1; width: 800px">
+        <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+        <model-viewer 
+            alt="sauna Mesh"
+            src="static/images/pd/dn_splatter_sauna_compress.glb"
+            style="width: 100%; height: 100%;"
+            camera-controls
+            camera-orbit="0deg 180deg 1m"
+            field-of-view="30deg">
+        </model-viewer>
+    </div>
+</div>
+</div>
 </section>
 
 <section class="section">
