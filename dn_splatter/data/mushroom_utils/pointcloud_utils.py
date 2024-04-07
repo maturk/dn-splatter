@@ -182,5 +182,100 @@ def generate_iPhone_pointcloud_within_sequence(
     o3d.io.write_point_cloud(os.path.join(data_path, "iphone_pointcloud.ply"), pcd)
 
 
+def generate_polycam_pointcloud(data_path: Path, num_points: int = 1_000_000):
+    print("Generating pointcloud from iPhone data...")
+    info_file = json.load(open(os.path.join(data_path, "transforms.json")))
+
+    frames = info_file["frames"]
+
+    volume = o3d.pipelines.integration.ScalableTSDFVolume(
+        voxel_length=0.04,
+        sdf_trunc=0.2,
+        color_type=o3d.pipelines.integration.TSDFVolumeColorType.RGB8,
+    )
+
+    num_images = len(frames)
+    i_all = np.arange(num_images)
+    index = i_all
+
+    points_list = []
+    colors_list = []
+
+    if "fl_x" in info_file:
+        fx, fy, cx, cy = (
+            float(info_file["fl_x"]),
+            float(info_file["fl_y"]),
+            float(info_file["cx"]),
+            float(info_file["cy"]),
+        )
+        H = int(info_file["h"])
+        W = int(info_file["w"])
+        camera_intrinsics = o3d.camera.PinholeCameraIntrinsic(W, H, fx, fy, cx, cy)
+
+    samples_per_frame = (num_points + len(index)) // (len(index))
+
+    for item in track(index, description="processing ... "):
+        frame = frames[item]
+        if "fl_x" in frame:
+            fx, fy, cx, cy = (
+                float(frame["fl_x"]),
+                float(frame["fl_y"]),
+                float(frame["cx"]),
+                float(frame["cy"]),
+            )
+            H = int(frame["h"])
+            W = int(frame["w"])
+            camera_intrinsics = o3d.camera.PinholeCameraIntrinsic(W, H, fx, fy, cx, cy)
+
+        color = cv2.imread(os.path.join(data_path, frame["file_path"]))
+        color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+        color = o3d.geometry.Image(color)
+
+        # pose
+        pose = frame["transform_matrix"]
+        pose = np.matmul(np.array(pose), OPENGL_TO_OPENCV)
+
+        depth = cv2.imread(
+            os.path.join(data_path, frame["depth_file_path"]), cv2.IMREAD_ANYDEPTH
+        )
+        depth = cv2.resize(depth, (W, H))  # type: ignore
+        depth = o3d.geometry.Image(depth)
+
+        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
+            color, depth, depth_trunc=4.0, convert_rgb_to_intensity=False
+        )
+
+        volume.integrate(
+            rgbd,
+            camera_intrinsics,  # type: ignore
+            np.linalg.inv(pose),
+        )
+
+        pcd = volume.extract_point_cloud()
+
+        # randomly select samples_per_frame points from points
+        samples_per_frame = min(samples_per_frame, len(pcd.points))
+        mask = random.sample(range(len(pcd.points)), samples_per_frame)
+        mask = np.asarray(mask)
+        color = np.asarray(pcd.colors)[mask]
+        point = np.asarray(pcd.points)[mask]
+
+        points_list.append(np.asarray(point))
+        colors_list.append(np.asarray(color))
+
+    points = np.vstack(points_list)
+    colors = np.vstack(colors_list)
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    o3d.io.write_point_cloud(os.path.join(data_path, "iphone_pointcloud.ply"), pcd)
+    # write ply_file_path to transforms.json file
+    info_file["ply_file_path"] = "./iphone_pointcloud.ply"
+    with open(os.path.join(data_path, "transforms.json"), "w") as f:
+        json.dump(info_file, f)
+
+
 if __name__ == "__main__":
-    tyro.cli(generate_kinect_pointcloud_within_sequence)
+    # tyro.cli(generate_kinect_pointcloud_within_sequence)
+    tyro.cli(generate_polycam_pointcloud)

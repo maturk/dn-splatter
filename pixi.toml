@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "Depth and normal priors for 3D Gaussian splatting and meshing"
 channels = ["nvidia/label/cuda-11.8.0", "nvidia", "conda-forge", "pytorch"]
 platforms = ["linux-64"]
+conda-pypi-map = { "conda-forge" = "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/mapping_as_grayskull.json" }
 
 [tasks]
+# Quick Run example
 download-omnidata = {cmd="python dn_splatter/data/download_scripts/download_omnidata.py", outputs=["omnidata_ckpt/omnidata_dpt_normal_v2.ckpt"]}
 download-data-sample = {cmd="python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/koivu_iphone.tar.gz"]}
 train-mushroom-sample = """
@@ -19,14 +21,42 @@ train-mushroom-sample = """
 """
 train-example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample", "train-mushroom-sample"]}
 
+# Other training examples
+train-replica = """
+    ns-train dn-splatter 
+    --max-num-iterations 10001 \
+    --experiment-name dsine \
+    --pipeline.model.use-depth-loss True \
+    --pipeline.model.sensor-depth-lambda 0.5 \
+    --pipeline.model.use-depth-smooth-loss True \
+    --pipeline.model.use-normal-loss True \
+    --pipeline.model.normal-supervision mono \
+    replica --data datasets/Replica --sequence room0 --normals_from pretrained --normal-format opencv
+"""
+
+train-polycam = """
+ns-train dn-splatter
+    --max-num-iterations 10001 \
+    --pipeline.model.use-depth-loss True \
+    --pipeline.model.sensor-depth-lambda 0.2 \
+    --pipeline.model.use-depth-smooth-loss True \
+    --pipeline.model.use-normal-loss True \
+    --pipeline.model.normal-supervision mono \
+    normal-nerfstudio --data datasets/polycam/bellevue_living_cart --normal-format opencv
+
+"""
+
 [dependencies]
 python = "3.10.*"
-pip = ">=23.3.2,<23.4"
+pip = ">=24.0,<25"
 cuda = {version = "*", channel="nvidia/label/cuda-11.8.0"}
 pytorch-cuda = {version = "11.8.*", channel="pytorch"}
 pytorch = {version = ">=2.2.0,<2.3", channel="pytorch"}
 torchvision = {version = ">=0.17.0,<0.18", channel="pytorch"}
-open3d = ">=0.18.0,<0.19"
+gcc = "11.*"
+gxx = ">=11.4.0,<11.5"
+pyarrow = ">=15.0.2,<15.1"
+rerun-sdk = ">=0.15.1,<0.16"
 gcc = "11.*"
 gxx = ">=11.4.0,<11.5"
 
