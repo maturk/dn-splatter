@@ -179,8 +179,7 @@ class ColmapToAlignedMonoDepths:
                 description="saving aligned depth images...",
             ):
                 depth_aligned_numpy = depth_aligned[idx, ...].detach().cpu().numpy()
-                file_name = str(batch_mono_frames[idx]).split(".")[0]
-
+                file_name = str(Path(batch_mono_frames[idx]).with_suffix(""))
                 # save only npy
                 np.save(Path(file_name + "_aligned.npy"), depth_aligned_numpy)
 

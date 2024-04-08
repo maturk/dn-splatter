@@ -41,7 +41,7 @@ class CoolerMapDataParserConfig(ColmapDataParserConfig):
     """Which depth data to load"""
     is_euclidean_depth: bool = False
     """Whether input depth maps are Euclidean distances (or z-distances)."""
-    load_depths: bool = True
+    load_depths: bool = False
     """Whether to load depth maps"""
     mono_pretrain: Literal["zoe"] = "zoe"
     """Which mono depth pretrain model to use."""
@@ -51,7 +51,7 @@ class CoolerMapDataParserConfig(ColmapDataParserConfig):
     """Which format the normal maps in camera frame are saved in."""
     normals_from: Literal["depth", "pretrained"] = "pretrained"
     """If no ground truth normals, generate normals either from sensor depths or from pretrained model."""
-    load_pcd_normals: bool = True
+    load_pcd_normals: bool = False
     """Whether to load pcd normals for normal initialisation"""
     load_3D_points: bool = True
     """Whether to load the 3D points from the colmap reconstruction."""
@@ -173,11 +173,12 @@ class CoolerMapDataParser(ColmapDataParser):
         indices = self._get_image_indices(image_filenames, split)
         if split == "train":
             indices = indices[:: self.config.load_every]
-        print(indices)
+
         metadata = {}
         # load depths
-        if self.config.depth_mode != "none":
+        if self.config.depth_mode != "none" and self.config.load_depths:
             if not (self.config.data / "mono_depth").exists():
+                CONSOLE.print(f"Load depth has been set to true, but could not find mono_depth path. Trying to generate aligned mono depth frames.")
                 ColmapToAlignedMonoDepths(
                     data=self.config.data, mono_depth_network=self.config.mono_pretrain
                 ).main()
@@ -193,7 +194,8 @@ class CoolerMapDataParser(ColmapDataParser):
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
 
-        assert len(metadata["mono_depth_filenames"]) == len(image_filenames)
+        if self.config.load_depths:
+            assert len(metadata["mono_depth_filenames"]) == len(image_filenames)
 
         # in x,y,z order
         # assumes that the scene is centered at the origin
