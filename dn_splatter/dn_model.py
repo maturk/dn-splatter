@@ -249,6 +249,17 @@ class DNSplatterModel(SplatfactoModel):
     def normals(self):
         return self.gauss_params["normals"]
 
+    @property
+    def colors(self):
+        if self.config.sh_degree > 0:
+            return SH2RGB(self.gauss_params["features_dc"])
+        else:
+            return torch.sigmoid(self.gauss_params["features_dc"])
+
+    @property
+    def num_points(self):
+        return self.gauss_params["means"].shape[0]
+
     def refinement_after(self, optimizers: Optimizers, step):
         assert step == self.step
         if self.step <= self.config.warmup_length:
