@@ -55,8 +55,8 @@ This repo registers a new model called `dn-splatter` with various additional opt
 | Command | Description |
 |--------------------|---|
 | --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
-| --pipeline.model.sensor-depth-lambda (Float 0.2 reccomended) | Regularizer weight for depth supervision |
-| --pipeline.model.mono-depth-lambda (Float 0.2 reccomended) | Regularizer weight for mono depth supervision |
+| --pipeline.model.sensor-depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
+| --pipeline.model.mono-depth-lambda (Float 0.2 recommended) | Regularizer weight for mono depth supervision |
 | --pipeline.model.use-depth-smooth-loss (True/False) | Add smoothness prior on rendered depths|
 | --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
 | --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
