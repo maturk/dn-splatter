@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal, Optional, Type
 
 import numpy as np
+import open3d as o3d
 import torch
 from natsort import natsorted
 
@@ -44,6 +45,8 @@ class NormalNerfstudioConfig(NerfstudioDataParserConfig):
     """Set to true to load normal maps"""
     normal_format: Literal["opencv", "opengl"] = "opengl"
     """Which format the normal maps in camera frame are saved in."""
+    load_pcd_normals: bool = True
+    """Whether to load pcd normals for normal initialisation"""
 
 
 @dataclass
@@ -55,6 +58,24 @@ class NormalNerfstudio(Nerfstudio):
 
     def get_normal_filepaths(self):
         return natsorted(glob.glob(f"{self.normal_save_dir}/*.png"))
+
+    def _load_points3D_normals(self, points, colors, transform_matrix: torch.Tensor):
+        """Initialise gaussian scales/rots with normals predicted from pcd"""
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points.numpy())
+        pcd.colors = o3d.utility.Vector3dVector(colors.numpy())
+        pcd.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30)
+        )
+        pcd.normalize_normals()
+        points3D_normals = torch.from_numpy(np.asarray(pcd.normals, dtype=np.float32))
+        points3D_normals = (
+            torch.cat(
+                (points3D_normals, torch.ones_like(points3D_normals[..., :1])), -1
+            )
+            @ transform_matrix.T
+        )
+        return {"points3D_normals": points3D_normals}
 
     def _generate_dataparser_outputs(self, split="train"):
         assert (
@@ -453,6 +474,15 @@ class NormalNerfstudio(Nerfstudio):
                 if sparse_points is not None:
                     metadata.update(sparse_points)
             self.prompted_user = True
+
+        if self.config.load_pcd_normals:
+            metadata.update(
+                self._load_points3D_normals(
+                    points=metadata["points3D_xyz"],
+                    colors=metadata["points3D_rgb"],
+                    transform_matrix=transform_matrix,
+                )
+            )
 
         if self.config.load_normals:
             metadata["normal_filenames"] = normal_filenames

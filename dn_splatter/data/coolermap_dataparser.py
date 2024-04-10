@@ -51,7 +51,7 @@ class CoolerMapDataParserConfig(ColmapDataParserConfig):
     """Which format the normal maps in camera frame are saved in."""
     normals_from: Literal["depth", "pretrained"] = "pretrained"
     """If no ground truth normals, generate normals either from sensor depths or from pretrained model."""
-    load_pcd_normals: bool = False
+    load_pcd_normals: bool = True
     """Whether to load pcd normals for normal initialisation"""
     load_3D_points: bool = True
     """Whether to load the 3D points from the colmap reconstruction."""
@@ -178,7 +178,7 @@ class CoolerMapDataParser(ColmapDataParser):
         # load depths
         if self.config.depth_mode != "none" and self.config.load_depths:
             if not (self.config.data / "mono_depth").exists():
-                CONSOLE.print(f"Load depth has been set to true, but could not find mono_depth path. Trying to generate aligned mono depth frames.")
+                CONSOLE.print("Load depth has been set to true, but could not find mono_depth path. Trying to generate aligned mono depth frames.")
                 ColmapToAlignedMonoDepths(
                     data=self.config.data, mono_depth_network=self.config.mono_pretrain
                 ).main()
