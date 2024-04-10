@@ -87,7 +87,7 @@ class MushroomDataParserConfig(DataParserConfig):
     """Which format the normal maps in camera frame are saved in."""
     normals_from: Literal["depth", "pretrained"] = "pretrained"
     """If no ground truth normals, generate normals either from sensor depths or from pretrained model."""
-    load_pcd_normals: bool = False
+    load_pcd_normals: bool = True
     """Whether to load pcd normals for normal initialisation"""
 
     # general configs
