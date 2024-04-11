@@ -76,8 +76,6 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Type of supervision for normals. Mono for monocular normals and depth for pseudo normals from depth maps."""
     normal_lambda: float = 0.1
     """Regularizer for normal loss"""
-    normal_direction_warmup_steps = 5000
-    """Warmup length for trying to align correct normal directions based on camera view vector"""
     use_sparse_loss: bool = False
     """Encourage opacities to be 0 or 1. From 'Neural volumes: Learning dynamic renderable volumes from images'."""
     sparse_lambda: float = 0.1
@@ -449,8 +447,6 @@ class DNSplatterModel(SplatfactoModel):
         # calculate the FOV of the camera given fx and fy, width and height
         cx = camera.cx.item()
         cy = camera.cy.item()
-        fovx = 2 * math.atan(camera.width / (2 * camera.fx))
-        fovy = 2 * math.atan(camera.height / (2 * camera.fy))
         W, H = int(camera.width.item()), int(camera.height.item())
         self.last_size = (H, W)
 
@@ -595,15 +591,13 @@ class DNSplatterModel(SplatfactoModel):
             rots = quat_to_rotmat(quats_crop)
             normals = torch.bmm(rots, normals[:, :, None]).squeeze(-1)
             normals = F.normalize(normals, dim=1)
-            if self.step < self.config.normal_direction_warmup_steps:
-                # flip normals based on current camera view vector during warmup
-                viewdirs = (
-                    -means_crop.detach() + camera.camera_to_worlds.detach()[..., :3, 3]
-                )
-                viewdirs = viewdirs / viewdirs.norm(dim=-1, keepdim=True)
-                dots = (normals * viewdirs).sum(-1)
-                negative_dot_indices = dots < 0
-                normals[negative_dot_indices] = -normals[negative_dot_indices]
+            viewdirs = (
+                -means_crop.detach() + camera.camera_to_worlds.detach()[..., :3, 3]
+            )
+            viewdirs = viewdirs / viewdirs.norm(dim=-1, keepdim=True)
+            dots = (normals * viewdirs).sum(-1)
+            negative_dot_indices = dots < 0
+            normals[negative_dot_indices] = -normals[negative_dot_indices]
             # update parameter group normals
             self.gauss_params["normals"] = normals
             # convert normals from world space to camera space
@@ -619,7 +613,6 @@ class DNSplatterModel(SplatfactoModel):
                 H,
                 W,
                 BLOCK_WIDTH,
-                # TODO: what should the background for normals be
             )
             # convert normals from [-1,1] to [0,1]
             normals_im = normals_im / normals_im.norm(dim=-1, keepdim=True)
@@ -816,26 +809,19 @@ class DNSplatterModel(SplatfactoModel):
             else:
                 num_samples = self.config.num_sdf_samples
 
-            start = time.time()
             # sample points according to gaussian distribution on surface
             samples, indices = self.sample_points_in_gaussians(
                 num_samples=num_samples, vis_indices=self.vis_indices
             )
-            # print(f"sample_points_in_gaussians took { time.time() - start} s")
-            start = time.time()
             # query closest gaussians to sampled points
             with torch.no_grad():
                 closest_gaussians = self._knn[indices]
-            # print(f"sampling _knn took { time.time() - start} s")
-            start = time.time()
             # compute current sdf estimates of samples
             current_sdfs = self.get_sdf(
                 sdf_samples=samples,
                 closest_gaussians=closest_gaussians,
                 vis_indices=self.vis_indices,
             )
-            # print(f"get_sdf took { time.time() - start} s")
-            start = time.time()
             # estimate ideal sdfs
             ideal_sdfs, valid_indices = self.get_ideal_sdf(
                 sdf_samples=samples.clone().detach(),
@@ -979,7 +965,6 @@ class DNSplatterModel(SplatfactoModel):
         if "sensor_depth" in batch:
             gt_depth = batch["sensor_depth"].to(self.device)
 
-            # TODO: remove this once the OpenCV bug is fixed, need gt_depth align with predicted depth
             if predicted_depth.shape[:2] != gt_depth.shape[:2]:
                 predicted_depth = TF.resize(
                     predicted_depth.permute(2, 0, 1), gt_depth.shape[:2], antialias=None
@@ -1640,8 +1625,6 @@ def rotate_vector_to_vector(v1: Tensor, v2: Tensor):
 def matrix_to_quaternion(rotation_matrix: Tensor):
     """
     Convert a 3x3 rotation matrix to a unit quaternion.
-
-    TODO: properly batchify this
     """
     if rotation_matrix.dim() == 2:
         rotation_matrix = rotation_matrix[None, ...]
@@ -1649,7 +1632,10 @@ def matrix_to_quaternion(rotation_matrix: Tensor):
 
     traces = torch.vmap(torch.trace)(rotation_matrix)
     quaternion = torch.zeros(
-        rotation_matrix.shape[0], 4, dtype=rotation_matrix.dtype, device=rotation_matrix.device
+        rotation_matrix.shape[0],
+        4,
+        dtype=rotation_matrix.dtype,
+        device=rotation_matrix.device,
     )
     for i in range(rotation_matrix.shape[0]):
         matrix = rotation_matrix[i]
