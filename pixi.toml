@@ -7,7 +7,7 @@ platforms = ["linux-64"]
 
 [tasks]
 download-omnidata = {cmd="python dn_splatter/data/download_scripts/download_omnidata.py", outputs=["omnidata_ckpt/omnidata_dpt_normal_v2.ckpt"]}
-download-data-sample = {cmd="python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/room_datasets/koivu/iphone/*"]}
+download-data-sample = {cmd="python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/koivu_iphone.tar.gz"]}
 train-mushroom-sample = """
     ns-train dn-splatter \
     --pipeline.model.use-depth-loss True \
@@ -27,6 +27,11 @@ pytorch-cuda = {version = "11.8.*", channel="pytorch"}
 pytorch = {version = ">=2.2.0,<2.3", channel="pytorch"}
 torchvision = {version = ">=0.17.0,<0.18", channel="pytorch"}
 open3d = ">=0.18.0,<0.19"
+gcc = "11.*"
+gxx = ">=11.4.0,<11.5"
 
 [pypi-dependencies]
 dn-splatter = { path = ".", editable = true}
+
+[system-requirements]
+libc = { family="glibc", version="2.32" }
