@@ -51,7 +51,7 @@ class GSDFStudioDataParserConfig(DataParserConfig):
     """Which depth data to load"""
     is_euclidean_depth: bool = False
     """Whether input depth maps are Euclidean distances (or z-distances)."""
-    load_pcd_normals: bool = False
+    load_pcd_normals: bool = True
     """Whether to load pcd normals for normal initialisation"""
     scale_factor: float = 1.0
     """How much to scale the camera origins by."""

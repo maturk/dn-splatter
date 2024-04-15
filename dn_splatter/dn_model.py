@@ -15,7 +15,7 @@ from torch import Tensor
 from torch.nn import Parameter
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from tqdm import tqdm
+from nerfstudio.cameras.camera_optimizers import CameraOptimizer
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
 from dn_splatter.metrics import DepthMetrics, RGBMetrics
@@ -77,8 +77,6 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Type of supervision for normals. Mono for monocular normals and depth for pseudo normals from depth maps."""
     normal_lambda: float = 0.1
     """Regularizer for normal loss"""
-    normal_direction_warmup_steps = 5000
-    """Warmup length for trying to align correct normal directions based on camera view vector"""
     use_sparse_loss: bool = False
     """Encourage opacities to be 0 or 1. From 'Neural volumes: Learning dynamic renderable volumes from images'."""
     sparse_lambda: float = 0.1
@@ -183,43 +181,40 @@ class DNSplatterModel(SplatfactoModel):
         avg_dist = distances.mean(dim=-1, keepdim=True)
 
         # init normals if present
-        if (
-            self.seed_points is not None
-            and len(self.seed_points) == 3
-            and self.training
-        ):  # type: ignore
-            self.normals_seed = self.seed_points[-1].float()  # type: ignore
-            self.normals_seed = self.normals_seed / torch.norm(
-                self.normals_seed, dim=-1, keepdim=True
-            )
-            normals = torch.nn.Parameter(self.normals_seed.detach())
-            scales = torch.log(avg_dist.repeat(1, 3))
-            scales[:, 2] = 0  # torch.log((avg_dist / 10)[:, 0])
-            scales = torch.nn.Parameter(scales)
-            quats = torch.zeros(len(self.normals_seed), 4)
-            z_vector = torch.tensor(
-                [0, 0, 1], dtype=torch.float, device=self.normals_seed.device
-            )
-            for i in tqdm(
-                range(len(self.normals_seed)),
-                desc="Initialising normals... (slow) this operation is not batched yet",
-            ):
-                rotation_matrix = rotate_vector_to_vector(
-                    z_vector, self.normals_seed[i]
+        with torch.no_grad():
+            if (
+                self.seed_points is not None and len(self.seed_points) == 3
+            ):  # type: ignore
+                CONSOLE.print(
+                    "[bold yellow]Initialising Gaussian normals from SfM estimates"
                 )
-                quaternion = matrix_to_quaternion(rotation_matrix)
-                quats[i, :] = quaternion
-            quats = torch.nn.Parameter(quats)
-        else:
-            scales = torch.nn.Parameter(torch.log(avg_dist.repeat(1, 3)))
-            quats = torch.nn.Parameter(random_quat_tensor(num_points))
+                self.normals_seed = self.seed_points[-1].float()  # type: ignore
+                self.normals_seed = self.normals_seed / torch.norm(
+                    self.normals_seed, dim=-1, keepdim=True
+                )
+                normals = torch.nn.Parameter(self.normals_seed.detach())
+                scales = torch.log(avg_dist.repeat(1, 3))
+                scales[:, 2] = torch.log((avg_dist / 10)[:, 0])
+                scales = torch.nn.Parameter(scales.detach())
+                quats = torch.zeros(len(self.normals_seed), 4)
+                mat = rotate_vector_to_vector(
+                    torch.tensor(
+                        [0, 0, 1], dtype=torch.float, device=self.normals_seed.device
+                    ).repeat(self.normals_seed.shape[0], 1),
+                    self.normals_seed,
+                )
+                quats = matrix_to_quaternion(mat)
+                quats = torch.nn.Parameter(quats.detach())
+            else:
+                scales = torch.nn.Parameter(torch.log(avg_dist.repeat(1, 3)))
+                quats = torch.nn.Parameter(random_quat_tensor(num_points))
 
-            # init random normals based on the above scales and quats
-            normals = F.one_hot(torch.argmin(scales, dim=-1), num_classes=3).float()
-            rots = quat_to_rotmat(quats)
-            normals = torch.bmm(rots, normals[:, :, None]).squeeze(-1)
-            normals = F.normalize(normals, dim=1)
-            normals = torch.nn.Parameter(normals.detach())
+                # init random normals based on the above scales and quats
+                normals = F.one_hot(torch.argmin(scales, dim=-1), num_classes=3).float()
+                rots = quat_to_rotmat(quats)
+                normals = torch.bmm(rots, normals[:, :, None]).squeeze(-1)
+                normals = F.normalize(normals, dim=1)
+                normals = torch.nn.Parameter(normals.detach())
 
         self.gauss_params = torch.nn.ParameterDict(
             {
@@ -244,6 +239,11 @@ class DNSplatterModel(SplatfactoModel):
         self.camera = None
         if self.config.use_normal_tv_loss:
             self.tv_loss = TVLoss()
+
+        # camera optimizer
+        self.camera_optimizer: CameraOptimizer = self.config.camera_optimizer.setup(
+            num_cameras=self.num_train_data, device="cpu"
+        )
 
     @property
     def normals(self):
@@ -453,8 +453,6 @@ class DNSplatterModel(SplatfactoModel):
         # calculate the FOV of the camera given fx and fy, width and height
         cx = camera.cx.item()
         cy = camera.cy.item()
-        fovx = 2 * math.atan(camera.width / (2 * camera.fx))
-        fovy = 2 * math.atan(camera.height / (2 * camera.fy))
         W, H = int(camera.width.item()), int(camera.height.item())
         self.last_size = (H, W)
 
@@ -599,14 +597,13 @@ class DNSplatterModel(SplatfactoModel):
             rots = quat_to_rotmat(quats_crop)
             normals = torch.bmm(rots, normals[:, :, None]).squeeze(-1)
             normals = F.normalize(normals, dim=1)
-            if True:
-                viewdirs = (
-                    -means_crop.detach() + camera.camera_to_worlds.detach()[..., :3, 3]
-                )
-                viewdirs = viewdirs / viewdirs.norm(dim=-1, keepdim=True)
-                dots = (normals * viewdirs).sum(-1)
-                negative_dot_indices = dots < 0
-                normals[negative_dot_indices] = -normals[negative_dot_indices]
+            viewdirs = (
+                -means_crop.detach() + camera.camera_to_worlds.detach()[..., :3, 3]
+            )
+            viewdirs = viewdirs / viewdirs.norm(dim=-1, keepdim=True)
+            dots = (normals * viewdirs).sum(-1)
+            negative_dot_indices = dots < 0
+            normals[negative_dot_indices] = -normals[negative_dot_indices]
             # update parameter group normals
             self.gauss_params["normals"] = normals
             # convert normals from world space to camera space
@@ -622,7 +619,6 @@ class DNSplatterModel(SplatfactoModel):
                 H,
                 W,
                 BLOCK_WIDTH,
-                # TODO: what should the background for normals be
             )
             # convert normals from [-1,1] to [0,1]
             normals_im = normals_im / normals_im.norm(dim=-1, keepdim=True)
@@ -819,26 +815,19 @@ class DNSplatterModel(SplatfactoModel):
             else:
                 num_samples = self.config.num_sdf_samples
 
-            start = time.time()
             # sample points according to gaussian distribution on surface
             samples, indices = self.sample_points_in_gaussians(
                 num_samples=num_samples, vis_indices=self.vis_indices
             )
-            # print(f"sample_points_in_gaussians took { time.time() - start} s")
-            start = time.time()
             # query closest gaussians to sampled points
             with torch.no_grad():
                 closest_gaussians = self._knn[indices]
-            # print(f"sampling _knn took { time.time() - start} s")
-            start = time.time()
             # compute current sdf estimates of samples
             current_sdfs = self.get_sdf(
                 sdf_samples=samples,
                 closest_gaussians=closest_gaussians,
                 vis_indices=self.vis_indices,
             )
-            # print(f"get_sdf took { time.time() - start} s")
-            start = time.time()
             # estimate ideal sdfs
             ideal_sdfs, valid_indices = self.get_ideal_sdf(
                 sdf_samples=samples.clone().detach(),
@@ -982,7 +971,6 @@ class DNSplatterModel(SplatfactoModel):
         if "sensor_depth" in batch:
             gt_depth = batch["sensor_depth"].to(self.device)
 
-            # TODO: remove this once the OpenCV bug is fixed, need gt_depth align with predicted depth
             if predicted_depth.shape[:2] != gt_depth.shape[:2]:
                 predicted_depth = TF.resize(
                     predicted_depth.permute(2, 0, 1), gt_depth.shape[:2], antialias=None
@@ -1611,59 +1599,82 @@ def rotate_vector_to_vector(v1: Tensor, v2: Tensor):
     Returns a rotation matrix that rotates v1 to align with v2.
     """
     assert v1.dim() == v2.dim()
-    assert v1.dim() == 1
-    u = v1 / torch.norm(v1)
-    Ru = v2 / torch.norm(v2)
-    I: Tensor = torch.eye(3, device=v1.device)  # noqa: E741
+    assert v1.shape[-1] == 3
+    if v1.dim() == 1:
+        v1 = v1[None, ...]
+        v2 = v2[None, ...]
+    N = v1.shape[0]
+
+    u = v1 / torch.norm(v1, dim=-1, keepdim=True)
+    Ru = v2 / torch.norm(v2, dim=-1, keepdim=True)
+    I = torch.eye(3, 3, device=v1.device).unsqueeze(0).repeat(N, 1, 1)
+
     # the cos angle between the vectors
-    c = torch.dot(u, Ru)
+    c = torch.bmm(u.view(N, 1, 3), Ru.view(N, 3, 1)).squeeze(-1)
+
     eps = 1.0e-10
-    if torch.abs(c - 1.0) < eps:
-        # same direction
-        return I
-    elif torch.abs(c + 1.0) < eps:
-        # opposite direction
-        return -I
-    else:
-        # the cross product matrix of a vector to rotate around
-        K = torch.outer(Ru, u) - torch.outer(u, Ru)
-        # Rodrigues' formula
-        return I + K + (K @ K) / (1 + c)
+    # the cross product matrix of a vector to rotate around
+    K = torch.bmm(Ru.unsqueeze(2), u.unsqueeze(1)) - torch.bmm(
+        u.unsqueeze(2), Ru.unsqueeze(1)
+    )
+    # Rodrigues' formula
+    ans = I + K + (K @ K) / (1 + c)[..., None]
+    same_direction_mask = torch.abs(c - 1.0) < eps
+    same_direction_mask = same_direction_mask.squeeze(-1)
+    opposite_direction_mask = torch.abs(c + 1.0) < eps
+    opposite_direction_mask = opposite_direction_mask.squeeze(-1)
+    ans[same_direction_mask] = torch.eye(3, device=v1.device)
+    ans[opposite_direction_mask] = -torch.eye(3, device=v1.device)
+    return ans
 
 
-def matrix_to_quaternion(matrix: Tensor):
+def matrix_to_quaternion(rotation_matrix: Tensor):
     """
     Convert a 3x3 rotation matrix to a unit quaternion.
     """
-    assert matrix.shape == (3, 3)
-    trace = torch.trace(matrix)
+    if rotation_matrix.dim() == 2:
+        rotation_matrix = rotation_matrix[None, ...]
+    assert rotation_matrix.shape[1:] == (3, 3)
 
-    if trace > 0:
-        S = torch.sqrt(trace + 1.0) * 2
-        w = 0.25 * S
-        x = (matrix[2, 1] - matrix[1, 2]) / S
-        y = (matrix[0, 2] - matrix[2, 0]) / S
-        z = (matrix[1, 0] - matrix[0, 1]) / S
-    elif (matrix[0, 0] > matrix[1, 1]) and (matrix[0, 0] > matrix[2, 2]):
-        S = torch.sqrt(1.0 + matrix[0, 0] - matrix[1, 1] - matrix[2, 2]) * 2
-        w = (matrix[2, 1] - matrix[1, 2]) / S
-        x = 0.25 * S
-        y = (matrix[0, 1] + matrix[1, 0]) / S
-        z = (matrix[0, 2] + matrix[2, 0]) / S
-    elif matrix[1, 1] > matrix[2, 2]:
-        S = torch.sqrt(1.0 + matrix[1, 1] - matrix[0, 0] - matrix[2, 2]) * 2
-        w = (matrix[0, 2] - matrix[2, 0]) / S
-        x = (matrix[0, 1] + matrix[1, 0]) / S
-        y = 0.25 * S
-        z = (matrix[1, 2] + matrix[2, 1]) / S
-    else:
-        S = torch.sqrt(1.0 + matrix[2, 2] - matrix[0, 0] - matrix[1, 1]) * 2
-        w = (matrix[1, 0] - matrix[0, 1]) / S
-        x = (matrix[0, 2] + matrix[2, 0]) / S
-        y = (matrix[1, 2] + matrix[2, 1]) / S
-        z = 0.25 * S
+    traces = torch.vmap(torch.trace)(rotation_matrix)
+    quaternion = torch.zeros(
+        rotation_matrix.shape[0],
+        4,
+        dtype=rotation_matrix.dtype,
+        device=rotation_matrix.device,
+    )
+    for i in range(rotation_matrix.shape[0]):
+        matrix = rotation_matrix[i]
+        trace = traces[i]
+        if trace > 0:
+            S = torch.sqrt(trace + 1.0) * 2
+            w = 0.25 * S
+            x = (matrix[2, 1] - matrix[1, 2]) / S
+            y = (matrix[0, 2] - matrix[2, 0]) / S
+            z = (matrix[1, 0] - matrix[0, 1]) / S
+        elif (matrix[0, 0] > matrix[1, 1]) and (matrix[0, 0] > matrix[2, 2]):
+            S = torch.sqrt(1.0 + matrix[0, 0] - matrix[1, 1] - matrix[2, 2]) * 2
+            w = (matrix[2, 1] - matrix[1, 2]) / S
+            x = 0.25 * S
+            y = (matrix[0, 1] + matrix[1, 0]) / S
+            z = (matrix[0, 2] + matrix[2, 0]) / S
+        elif matrix[1, 1] > matrix[2, 2]:
+            S = torch.sqrt(1.0 + matrix[1, 1] - matrix[0, 0] - matrix[2, 2]) * 2
+            w = (matrix[0, 2] - matrix[2, 0]) / S
+            x = (matrix[0, 1] + matrix[1, 0]) / S
+            y = 0.25 * S
+            z = (matrix[1, 2] + matrix[2, 1]) / S
+        else:
+            S = torch.sqrt(1.0 + matrix[2, 2] - matrix[0, 0] - matrix[1, 1]) * 2
+            w = (matrix[1, 0] - matrix[0, 1]) / S
+            x = (matrix[0, 2] + matrix[2, 0]) / S
+            y = (matrix[1, 2] + matrix[2, 1]) / S
+            z = 0.25 * S
 
-    return torch.tensor([w, x, y, z], dtype=matrix.dtype, device=matrix.device)
+        quaternion[i] = torch.tensor(
+            [w, x, y, z], dtype=matrix.dtype, device=matrix.device
+        )
+    return quaternion
 
 
 def scale_rot_to_inv_cov3d(scale, quat, return_sqrt=False):
