@@ -15,6 +15,7 @@ from torch import Tensor
 from torch.nn import Parameter
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+from nerfstudio.cameras.camera_optimizers import CameraOptimizer
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
 from dn_splatter.metrics import DepthMetrics, RGBMetrics
@@ -238,6 +239,11 @@ class DNSplatterModel(SplatfactoModel):
         self.camera = None
         if self.config.use_normal_tv_loss:
             self.tv_loss = TVLoss()
+
+        # camera optimizer
+        self.camera_optimizer: CameraOptimizer = self.config.camera_optimizer.setup(
+            num_cameras=self.num_train_data, device="cpu"
+        )
 
     @property
     def normals(self):
