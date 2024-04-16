@@ -15,7 +15,6 @@ from torch import Tensor
 from torch.nn import Parameter
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from nerfstudio.cameras.camera_optimizers import CameraOptimizer
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
 from dn_splatter.metrics import DepthMetrics, RGBMetrics
@@ -26,6 +25,7 @@ from gsplat._torch_impl import quat_to_rotmat
 from gsplat.project_gaussians import project_gaussians
 from gsplat.rasterize import rasterize_gaussians
 from gsplat.sh import num_sh_bases, spherical_harmonics
+from nerfstudio.cameras.camera_optimizers import CameraOptimizer, CameraOptimizerConfig
 from nerfstudio.cameras.cameras import Cameras
 from nerfstudio.data.scene_box import OrientedBox
 from nerfstudio.engine.callbacks import (
@@ -117,6 +117,10 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """
     stop_split_at: int = 15000
     """stop splitting at this step"""
+    camera_optimizer: CameraOptimizerConfig = field(
+        default_factory=lambda: CameraOptimizerConfig(mode="off")
+    )
+    """Config of the camera optimizer to use"""
 
 
 class DNSplatterModel(SplatfactoModel):
