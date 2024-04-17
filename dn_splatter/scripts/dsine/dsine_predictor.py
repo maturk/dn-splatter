@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-from typing import Literal
+from typing import Literal, Optional
 from torchvision import transforms
 from jaxtyping import UInt8, Float
 import torch.nn.functional as F
@@ -49,7 +49,7 @@ def get_intrins_from_fov(new_fov, height, width, device):
     return new_intrins
 
 
-def _load_state_dict(local_file_path: str | None = None):
+def _load_state_dict(local_file_path: Optional[str] = None):
     if local_file_path is not None and os.path.exists(local_file_path):
         # Load state_dict from local file
         state_dict = torch.load(local_file_path, map_location=torch.device("cpu"))
@@ -85,7 +85,7 @@ class DSinePredictor:
     def __call__(
         self,
         rgb: UInt8[np.ndarray, "h w 3"],
-        K_33: Float[np.ndarray, "3 3"] | None = None,
+        K_33: Optional[Float[np.ndarray, "3 3"]] = None,
     ) -> Float[torch.Tensor, "b 3 h w"]:
         rgb = rgb.astype(np.float32) / 255.0
         rgb = torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0).to(self.device)
