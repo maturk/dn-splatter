@@ -132,7 +132,7 @@ But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson f
 ### Generate pseudo ground truth normal maps
 The `dn-splatter` model's predicted normals can be supervised with the gradient of rendered depth maps or by external monocular normal estimates using the flag `--pipeline.model.normal-supervision (mono/depth)`. To train with monocular normals, you need to use an external network to predict them.
 
-We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata) and from [DSINE](https://github.com/pablovela5620). 
+We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata) and from [DSINE](https://github.com/baegwangbin/DSINE). 
 
 
 #### 1. Omnidata normals:
