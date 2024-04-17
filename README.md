@@ -382,9 +382,27 @@ To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run
 python dn_splatter/eval/eval_mesh.py --gt_mesh [GT_Mesh_Path] --pred_mesh [Pred_Mesh_Path]
 ```
 
+# Acknowledgements
+I want to thank [Tobias Fischer](https://tobiasfshr.github.io), [Songyou Peng](https://pengsongyou.github.io) and [Philipp Lindenberger](https://github.com/Phil26AT) for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the [Nerfstudio](https://github.com/nerfstudio-project/nerfstudio) team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.
+
+# Citation
+If you find this work useful in your research, consider citing it:
+```
+@misc{turkulainen2024dnsplatter,
+        title={DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing}, 
+        author={Matias Turkulainen and Xuqian Ren and Iaroslav Melekhov and Otto Seiskari and Esa Rahtu and Juho Kannala},
+        year={2024},
+        eprint={2403.17822},
+        archivePrefix={arXiv},
+        primaryClass={cs.CV}
+}
+```
+
 # Contributing
 
-We welcome any bug fixes, issues/comments, or contributions. Also, if you have any suggestions or improvements, let me know! Some interesting things to explore would be baking Gaussian colors to the meshes, implementing better monocular networks like [DSINE](https://github.com/baegwangbin/DSINE) or [Unidepth](https://github.com/lpiccinelli-eth/UniDepth) in addition to the omnidata and zoe depth models, or implementing relative depth losses for monocular depth estimators.
+We welcome any bug fixes, issues/comments, or contributions. Also, if you have any suggestions or improvements, let me know!
+
+I want to thank [Pablo Vela](https://github.com/pablovela5620) for contributing the DSINE normal predictor into this project and allowing for an alternative (much easier) installation with Pixi.
 
 ## Developers
 - [maturk](https://github.com/maturk)
