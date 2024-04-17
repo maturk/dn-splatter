@@ -17,7 +17,7 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
-from dn_splatter.metrics import DepthMetrics, RGBMetrics
+from dn_splatter.metrics import DepthMetrics, RGBMetrics, NormalMetrics
 from dn_splatter.utils.camera_utils import get_colored_points_from_depth, project_pix
 from dn_splatter.utils.knn import knn_sk
 from dn_splatter.utils.normal_utils import normal_from_depth_image
@@ -179,6 +179,7 @@ class DNSplatterModel(SplatfactoModel):
         self.psnr = PeakSignalNoiseRatio(data_range=1.0)
         self.rgb_metrics = RGBMetrics()
         self.depth_metrics = DepthMetrics()
+        self.normal_metrics = NormalMetrics()
         distances, indices = self.k_nearest_sklearn(means.data, 3)
         distances = torch.from_numpy(distances)
         # find the average of the three nearest neighbors for each point and use that as the scale
@@ -948,8 +949,11 @@ class DNSplatterModel(SplatfactoModel):
             "rgb"
         ]  # Blended with background (black if random background)
         predicted_depth = outputs["depth"]
+        predicted_normal = outputs["normal"]
 
         combined_rgb = torch.cat([gt_rgb, predicted_rgb], dim=1)
+        combined_depth = predicted_depth # a placeholder if no sensor depth is available
+        combined_normal = predicted_normal # a placeholder if no gt normal is available
 
         # Switch images from [H, W, C] to [1, C, H, W] for metrics computations
         gt_rgb = torch.moveaxis(gt_rgb, -1, 0)[None, ...]
@@ -1001,8 +1005,25 @@ class DNSplatterModel(SplatfactoModel):
                 "depth_a3": float(a3.item()),
             }
             metrics_dict.update(depth_metrics)
+            combined_depth = torch.cat([gt_depth, predicted_depth], dim=1)
 
-        images_dict = {"img": combined_rgb, "depth": predicted_depth}
+        if "normal" in batch:
+            gt_normal = batch["normal"].to(self.device)
+
+            (mae, rmse, mean_err, med_err) = self.normal_metrics(
+                predicted_normal.permute(2, 0, 1).unsqueeze(0), gt_normal.permute(2, 0, 1).unsqueeze(0)
+            )
+            normal_metrics = {
+                "normal_mae": float(mae.item()),
+                "normal_rsme": float(rmse.item()),
+                "normal_mean_err": float(mean_err.item()),
+                "normal_med_err": float(med_err.item()),
+            }
+            metrics_dict.update(normal_metrics)
+            combined_normal = torch.cat([gt_normal, predicted_normal], dim=1)
+
+
+        images_dict = {"img": combined_rgb, "depth": combined_depth, "normal": combined_normal}
 
         return metrics_dict, images_dict
 

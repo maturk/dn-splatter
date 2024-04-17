@@ -38,7 +38,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Installation
-
+### Method 1. Using Conda and Pip
 Follow installation instructions for [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html). This repo is compatible with a `nerfstudio` conda environment.
 
 Clone and install DN-Splatter
@@ -48,7 +48,25 @@ git clone https://github.com/maturk/dn-splatter
 cd dn_splatter/
 pip install -e .
 ```
+### Method 2. Using Pixi
+Download the [pixi package manager](https://pixi.sh/latest/), this will manage the installation of cuda/pytorch/nerfstudio for you
 
+Clone and install DN-Splatter
+```bash
+git clone https://github.com/maturk/dn-splatter
+cd dn_splatter/
+pixi install
+```
+
+To run an example
+```bash
+pixi run example
+```
+
+To activate conda enviroment
+```bash
+pixi shell
+```
 ## Usage
 This repo registers a new model called `dn-splatter` with various additional options:
 
@@ -114,7 +132,11 @@ But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson f
 ### Generate pseudo ground truth normal maps
 The `dn-splatter` model's predicted normals can be supervised with the gradient of rendered depth maps or by external monocular normal estimates using the flag `--pipeline.model.normal-supervision (mono/depth)`. To train with monocular normals, you need to use an external network to predict them.
 
-We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata). You need to download the model weights first:
+We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata) and from [DSINE](https://github.com/baegwangbin/DSINE). 
+
+
+#### 1. Omnidata normals:
+You need to download the model weights first:
 
 ```bash
 python dn_splatter/data/download_scripts/download_omnidata.py
@@ -129,10 +151,25 @@ python dn_splatter/scripts/normals_from_pretrain.py
 ```
 We highly reccommend using low res normal maps, since generating HD versions from omnidata (that match the dataset image size) is very time consuming.
 
+#### 2. DSINE normals:
+To generate normals from DSINE, run the following command:
+
+```bash
+python dn_splatter/scripts/normals_from_pretrain.py --data-dir [PATH_TO_DATA] --model-type dsine
+```
+
+If using DSINE normals for supervision, remember to use the `--normal-format opencv` in your `ns-train` command. An example command is as follows:
+
+```bash
+ns-train dn-splatter --pipeline.model.use-normal-loss True --pipeline.model.normal-supervision mono replica --data ./datasets/Replica/ --normals-from pretrained --normal-format opencv
+```
+
+#### Important notes:
 Default save path of generated normals is `data_root/normals_from_pretrain`
-And to enable training with pretrained normals, add `--normals_from pretrained` flag in the dataparser. 
+And to enable training with pretrained normals, add `--normals-from pretrained` flag in the dataparser. 
 
 NOTE: different monocular networks can use varying camera coordinate systems for saving/visualizing predicted normals in the camera frame. We support both OpenGL and OpenCV coordinate systems. Each dataparser has a flag `--normal-format [opengl/opencv]` to distinguish between them. We render normals into the camera frame according to OpenCV color coding which is similar to Open3D. Some software might have different conventions. Omnidata normals are stored in OpenGL coordinates, but we convert them to OpenCV for consistency across the repo.
+
 ### Convert dataset to COLMAP format
 
 If your dataset has no camera pose information, you can generate poses using COLMAP.

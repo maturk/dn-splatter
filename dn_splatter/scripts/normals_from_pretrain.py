@@ -25,13 +25,15 @@ from dn_splatter.utils.utils import (
     save_img,
     save_normal,
 )
+from dn_splatter.scripts.dsine.dsine_predictor import DSinePredictor
 from omnidata_tools.torch.modules.midas.dpt_depth import DPTDepthModel
 from rich.console import Console
 from tqdm import tqdm
 
 from nerfstudio.utils.io import load_from_json
+from jaxtyping import Float
 
-BATCH_SIZE = 30
+BATCH_SIZE = 15
 CONSOLE = Console(width=120)
 
 image_size = 384  # omnidata can only accept 384x384 images
@@ -54,6 +56,7 @@ class NormalsFromPretrained:
     """Whether to make low resolution or full image resolution normal estimates"""
     force_images_dir: bool = False
     """Force to use img_dir_name instead of transforms.json if found"""
+    model_type: Literal["omnidata", "dsine"] = "omnidata"
 
     def main(self):
         if (
@@ -67,25 +70,80 @@ class NormalsFromPretrained:
             image_paths = [
                 self.data_dir / Path(frame["file_path"]) for frame in meta["frames"]
             ]
-            if self.resolution == "low":
-                run_monocular_normals(images=image_paths, save_path=self.save_path)
-            else:
-                run_monocular_normals_hd(images=image_paths, save_path=self.save_path)
+            if self.model_type == "omnidata":
+                if self.resolution == "low":
+                    run_monocular_normals(images=image_paths, save_path=self.save_path)
+                else:
+                    run_monocular_normals_hd(
+                        images=image_paths, save_path=self.save_path
+                    )
+            elif self.model_type == "dsine":
+                run_monocular_dsine(images=image_paths, save_path=self.save_path)
 
         elif len(os.listdir(self.data_dir / Path(self.img_dir_name))) != 0:
             CONSOLE.print(
                 f"[bold yellow]Found images in /{self.img_dir_name}, using these to generate mononormals."
             )
             image_paths = get_filename_list(self.data_dir / Path(self.img_dir_name))
-            if self.resolution == "low":
-                run_monocular_normals(images=image_paths, save_path=self.save_path)
-            else:
-                run_monocular_normals_hd(images=image_paths, save_path=self.save_path)
+            if self.model_type == "omnidata":
+                if self.resolution == "low":
+                    run_monocular_normals(images=image_paths, save_path=self.save_path)
+                else:
+                    run_monocular_normals_hd(
+                        images=image_paths, save_path=self.save_path
+                    )
+            elif self.model_type == "dsine":
+                run_monocular_dsine(images=image_paths, save_path=self.save_path)
         else:
             CONSOLE.print(
                 f"Could not find {self.transforms_name} or images in /{self.img_dir_name}, quitting."
             )
         CONSOLE.print("Completed generating mono-normals!")
+
+
+def run_monocular_dsine(
+    images: List[Path],
+    save_path: Path,
+):
+    """Generates normal maps from pretrained omnidata
+    Args:
+        images: list of image paths
+        save_path: path to save directory
+
+    Returns:
+        None
+    """
+    if save_path is None:
+        save_path = images[0].parent.parent / "normals_from_pretrain"
+    save_path.mkdir(exist_ok=True, parents=True)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = DSinePredictor(device=device)
+
+    image_list = images
+
+    for idx, single_path in enumerate(tqdm(image_list)):
+        bgr = cv2.imread(str(single_path))
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        normal_b3hw: Float[torch.Tensor, "b 3 h w"] = model(rgb)
+        b, _, h, w = normal_b3hw.shape
+        normal_np_bhw3 = normal_b3hw.permute(0, 2, 3, 1).numpy(force=True)
+        # convert from LUF to RUF
+        normal_np_bhw3 = normal_np_bhw3.reshape(-1, 3)
+        transform_mat = np.diag([-1, 1, 1])
+        normal_np_bhw3 = normal_np_bhw3 @ transform_mat
+
+        normal_np_bhw3 = normal_np_bhw3.reshape(b, h, w, 3)
+        # bring from [-1, 1] to [0, 1]
+        normal_np_bhw3 = (normal_np_bhw3 + 1.0) / 2.0
+        normal_np_hw3 = normal_np_bhw3.squeeze(0)
+
+        # png is between 0-1, (h, w, 3), float32
+        save_normal(
+            normal_np_hw3,
+            f"{save_path / single_path.stem}.png",
+            verbose=False,
+            format="png",
+        )
 
 
 def run_monocular_normals(
