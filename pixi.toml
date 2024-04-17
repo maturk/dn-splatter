@@ -21,30 +21,24 @@ train-mushroom-sample = """
 """
 train-example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample", "train-mushroom-sample"]}
 
-# Other training examples
-train-replica = """
-    ns-train dn-splatter 
-    --max-num-iterations 10001 \
-    --experiment-name dsine \
-    --pipeline.model.use-depth-loss True \
-    --pipeline.model.sensor-depth-lambda 0.5 \
-    --pipeline.model.use-depth-smooth-loss True \
-    --pipeline.model.use-normal-loss True \
-    --pipeline.model.normal-supervision mono \
-    replica --data datasets/Replica --sequence room0 --normals_from pretrained --normal-format opencv
-"""
-
+# Polycam example using dsine
+## first download polycam only if ls fails (checking that file isn't already downloaded), || is used to check if file exists, if not move on to following command
+download-polycam = {cmd="ls datasets/polycam/6g-first-scan-poly.zip || wget -P datasets/polycam https://huggingface.co/datasets/pablovela5620/sample-polycam-room/resolve/main/6g-first-scan-poly.zip"}
+convert-poly-to-ns = {cmd="ls datasets/polycam/6g-first-scan-poly/transforms.json || ns-process-data polycam --data datasets/polycam/6g-first-scan-poly.zip --output-dir datasets/polycam/6g-first-scan-poly --use-depth", depends_on=["download-polycam"]}
+generate-normals = {cmd="ls datasets/polycam/6g-first-scan-poly/normals_from_pretrain/frame_00001.png || python dn_splatter/scripts/normals_from_pretrain.py --data-dir datasets/polycam/6g-first-scan-poly --model-type dsine", depends_on=["convert-poly-to-ns"]}
+generate-pointcloud = "ls datasets/polycam/6g-first-scan-poly/iphone_pointcloud.ply || python dn_splatter/data/mushroom_utils/pointcloud_utils.py --data-path datasets/polycam/6g-first-scan-poly"
 train-polycam = """
 ns-train dn-splatter \
-    --max-num-iterations 10001 \
+    --max-num-iterations 5001 \
     --pipeline.model.use-depth-loss True \
     --pipeline.model.sensor-depth-lambda 0.2 \
     --pipeline.model.use-depth-smooth-loss True \
     --pipeline.model.use-normal-loss True \
     --pipeline.model.normal-supervision mono \
-    normal-nerfstudio --data datasets/polycam/bellevue_living_cart --normal-format opencv
-
+    normal-nerfstudio --data datasets/polycam/6g-first-scan-poly --normal-format opencv
 """
+
+example-polycam = {cmd="pwd", depends_on=["generate-normals", "generate-pointcloud", "train-polycam"]}
 
 [dependencies]
 python = "3.10.*"
