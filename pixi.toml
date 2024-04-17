@@ -8,8 +8,8 @@ conda-pypi-map = { "conda-forge" = "https://raw.githubusercontent.com/prefix-dev
 
 [tasks]
 # Quick Run example
-download-omnidata = {cmd="python dn_splatter/data/download_scripts/download_omnidata.py", outputs=["omnidata_ckpt/omnidata_dpt_normal_v2.ckpt"]}
-download-data-sample = {cmd="python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/koivu_iphone.tar.gz"]}
+download-omnidata = {cmd="ls omnidata_ckpt/omnidata_dpt_normal_v2.ckpt || python dn_splatter/data/download_scripts/download_omnidata.py", outputs=["omnidata_ckpt/omnidata_dpt_normal_v2.ckpt"]}
+download-data-sample = {cmd="ls datasets/koivu_iphone.tar.gz || python dn_splatter/data/download_scripts/mushroom_download.py --sequence iphone --room-name koivu", outputs=["datasets/koivu_iphone.tar.gz"]}
 train-mushroom-sample = """
     ns-train dn-splatter \
     --pipeline.model.use-depth-loss True \
@@ -19,7 +19,7 @@ train-mushroom-sample = """
     --pipeline.model.normal-supervision mono \
     mushroom --data datasets/room_datasets/koivu --mode iphone
 """
-train-example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample", "train-mushroom-sample"]}
+example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample", "train-mushroom-sample"]}
 
 # Polycam example using dsine
 ## first download polycam only if ls fails (checking that file isn't already downloaded), || is used to check if file exists, if not move on to following command
