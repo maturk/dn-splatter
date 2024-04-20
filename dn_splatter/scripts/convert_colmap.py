@@ -9,7 +9,7 @@ import tyro
 
 """
 <base_dir>
-|---image_path
+|---images
 |   |---<image 0>
 |   |---<image 1>
 |   |---...
