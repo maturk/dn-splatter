@@ -2,7 +2,7 @@
 
 ### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
 
-This is repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
+This repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
 
 https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
 
@@ -32,11 +32,20 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
       <a href="#evaluation">Evaluation</a>
     </li>
     <li>
+      <a href="#acknowledgements">Acknowledgements</a>
+    </li>
+    <li>
+      <a href="#citation">Citation</a>
+    </li>
+    <li>
       <a href="#developers">Developers</a>
     </li>
   </ol>
 </details>
 
+## Updates
+- 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
+- 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
 ## Installation
 ### Method 1. Using Conda and Pip
 Follow installation instructions for [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html). This repo is compatible with a `nerfstudio` conda environment.
@@ -100,6 +109,9 @@ ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-sparse-loss True \
                  --pipeline.model.use-binary-opacities True \
 ```
+
+### dn-splatter-big:
+We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
 
 ## Mesh
 To extract a mesh, run the following command:
