@@ -69,5 +69,68 @@ dn_splatter = MethodSpecification(
         viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
         vis="viewer",
     ),
-    description="Our version of gaussian splatting for experimentation.",
+    description="DN-Splatter: depth and normal priors for 3DGS",
+)
+
+dn_splatter_big = MethodSpecification(
+    config=TrainerConfig(
+        method_name="dn-splatter-big",
+        steps_per_eval_image=500,
+        steps_per_eval_batch=500,
+        steps_per_save=1000000,
+        steps_per_eval_all_images=1000000,
+        max_num_iterations=30000,
+        mixed_precision=False,
+        pipeline=DNSplatterPipelineConfig(
+            datamanager=DNSplatterManagerConfig(
+                dataparser=NormalNerfstudioConfig(load_3D_points=True)
+            ),
+            model=DNSplatterModelConfig(
+                cull_alpha_thresh=0.005,
+                continue_cull_post_densification=False,
+            ),
+        ),
+        optimizers={
+            "means": {
+                "optimizer": AdamOptimizerConfig(lr=1.6e-4, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1.6e-6,
+                    max_steps=30000,
+                ),
+            },
+            "features_dc": {
+                "optimizer": AdamOptimizerConfig(lr=0.0025, eps=1e-15),
+                "scheduler": None,
+            },
+            "features_rest": {
+                "optimizer": AdamOptimizerConfig(lr=0.0025 / 20, eps=1e-15),
+                "scheduler": None,
+            },
+            "opacities": {
+                "optimizer": AdamOptimizerConfig(lr=0.05, eps=1e-15),
+                "scheduler": None,
+            },
+            "scales": {
+                "optimizer": AdamOptimizerConfig(lr=0.005, eps=1e-15),
+                "scheduler": None,
+            },
+            "quats": {
+                "optimizer": AdamOptimizerConfig(lr=0.001, eps=1e-15),
+                "scheduler": None,
+            },
+            "camera_opt": {
+                "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=5e-5, max_steps=30000
+                ),
+            },
+            "normals": {
+                "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+                "scheduler": None,
+            },
+        },
+        viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+        vis="viewer",
+    ),
+    description="DN-Splatter Big variant",
 )
