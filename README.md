@@ -293,6 +293,16 @@ Use the `coolermap` dataparser with COLMAP datasets as follows:
 ```bash
 ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH]
 ```
+An example:
+```bash
+ns-train dn-splatter \
+--pipeline.model.use-depth-loss True \
+--pipeline.model.mono-depth-lambda 0.1 \
+--pipeline.model.use-depth-smooth-loss True \
+--pipeline.model.use-normal-loss True \
+--pipeline.model.normal-supervision (mono/depth) \
+coolermap --data [DATASET_PATH] --load_normals True
+```
 
 ### [MuSHRoom](https://github.com/TUTvision/MuSHRoom)
 Support for Kinect and iPhone RGB-D trajectories.
@@ -391,7 +401,7 @@ python dn_splatter/eval/eval_mesh_mushroom.py --gt_mesh_path [GT_Mesh_Path] --pr
 
 To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run the following command:
 ```bash
-python dn_splatter/eval/eval_mesh.py --gt_mesh [GT_Mesh_Path] --pred_mesh [Pred_Mesh_Path]
+python dn_splatter/eval/eval_mesh.py --gt_mesh [GT_Mesh_Path] --pred_mesh [Pred_Mesh_Path] --dataset [dataset_name]
 ```
 
 # Acknowledgements

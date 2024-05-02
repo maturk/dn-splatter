@@ -2,6 +2,7 @@
 adapted from go_surf scripts:
 https://github.com/JingwenWang95/go-surf/blob/master/tools/mesh_metrics.py#L33
 """
+
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +11,15 @@ import trimesh
 import tyro
 from matplotlib import pyplot as plt
 from scipy.spatial import cKDTree
+
+transform = np.array(
+    [
+        [1, 0, 0, 0],
+        [0, 0, -1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 1],
+    ]
+)
 
 
 def get_align_transformation(rec_meshfile, gt_meshfile):
@@ -143,10 +153,14 @@ def compute_metrics(mesh_pred, mesh_target):
     return rst
 
 
-def main(gt_mesh: Path, pred_mesh: Path, align: bool = False):
+def main(
+    gt_mesh: Path, pred_mesh: Path, align: bool = False, dataset: str = "scannetpp"
+):
     gt_mesh_ply = trimesh.load(gt_mesh, process=False)
     pd_mesh_ply = trimesh.load(pred_mesh, process=False)
 
+    if dataset == "scannetpp":
+        pd_mesh_ply = pd_mesh_ply.apply_transform(transform)
     if align:
         transformation = get_align_transformation(str(pred_mesh), str(gt_mesh))
         pd_mesh_ply = pd_mesh_ply.apply_transform(transformation)
