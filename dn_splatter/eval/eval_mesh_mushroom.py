@@ -546,12 +546,25 @@ def trimesh_from_open3d_mesh(open3d_mesh):
 
 def main(
     gt_mesh_path: Path,  # path to gt mesh folder
-    pred_mesh_path: Path,  # path to the pred mesh path
+    pred_mesh_path: Path,  # path to the pred mesh ply
     device: Literal["kinect", "iphone"] = "iphone",
     output: Path = Path("."),  # output path
     transform_path: Optional[Path] = None,  # assume nerfacto style mesh as input
     meta_data_path: Optional[Path] = None,  # assume neusfacto style mesh as input
 ):
+    """Evaluate mushroom dataset meshes
+
+    Args:
+        gt_mesh_path: Path to gt mesh folder ../room_datasets/[scene_name]
+        pred_mesh_path: Path to predicted mesh .ply
+        device: iphone or kinect sequence
+        output: output path
+        transform_path: transform path for depth-nerfacto/nerfacto models
+        meta_data_path: meta data path for sdfstudio / monosdf / neusfacto models
+
+    Returns:
+        None
+    """
     gt_mesh = o3d.io.read_triangle_mesh(str(gt_mesh_path / "gt_mesh.ply"))
     gt_mesh = gt_mesh.remove_unreferenced_vertices()
 
@@ -599,6 +612,7 @@ def main(
     pred_mesh = trimesh_from_open3d_mesh(pred_mesh)
 
     rst = compute_metrics(pred_mesh, gt_mesh)
+    print(f"Saving results to: {output / 'metrics.json'}")
     json.dump(rst, open(output / "metrics.json", "w"))
 
 
