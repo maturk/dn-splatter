@@ -4,8 +4,8 @@ description = "Depth and normal priors for 3D Gaussian splatting and meshing"
 version = "0.0.1"
 
 dependencies = [
-    "nerfstudio >= 1.0.3",
-    "gsplat >= 0.1.9",
+    "nerfstudio >= 1.1.2",
+    "gsplat >= 1.0.0",
     "black == 22.3.0",
     "natsort",
     "pymeshlab>=2022.2.post2; platform_machine != 'arm64' and platform_machine != 'aarch64'",
