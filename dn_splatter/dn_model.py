@@ -121,6 +121,14 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
         default_factory=lambda: CameraOptimizerConfig(mode="off")
     )
     """Config of the camera optimizer to use"""
+    
+    ### Gaussian surfels configs ###
+    force_2d: bool = False
+    """Whether to force 2D gaussians like Gaussian Surfels"""
+    use_nd_loss: bool = False
+    """Whether to use normal-depth consistency loss like Gaussian Surfels"""
+    nd_lambda: float = 0.1
+    """Regularizer for nd lambda"""
 
 
 class DNSplatterModel(SplatfactoModel):
@@ -199,7 +207,10 @@ class DNSplatterModel(SplatfactoModel):
                 )
                 normals = torch.nn.Parameter(self.normals_seed.detach())
                 scales = torch.log(avg_dist.repeat(1, 3))
-                scales[:, 2] = torch.log((avg_dist / 10)[:, 0])
+                if self.config.force_2d:
+                    scales[:, 2] = -1e10
+                else:
+                    scales[:, 2] = torch.log((avg_dist / 10)[:, 0])
                 scales = torch.nn.Parameter(scales.detach())
                 quats = torch.zeros(len(self.normals_seed), 4)
                 mat = rotate_vector_to_vector(
@@ -212,6 +223,8 @@ class DNSplatterModel(SplatfactoModel):
                 quats = torch.nn.Parameter(quats.detach())
             else:
                 scales = torch.nn.Parameter(torch.log(avg_dist.repeat(1, 3)))
+                if self.config.force_2d:
+                    scales[:, 2] = -1e10
                 quats = torch.nn.Parameter(random_quat_tensor(num_points))
 
                 # init random normals based on the above scales and quats
@@ -253,6 +266,59 @@ class DNSplatterModel(SplatfactoModel):
     @property
     def normals(self):
         return self.gauss_params["normals"]
+
+    def split_gaussians(self, split_mask, samps):
+        """
+        This function splits gaussians that are too large
+        """
+        n_splits = split_mask.sum().item()
+        CONSOLE.log(f"Splitting {split_mask.sum().item()/self.num_points} gaussians: {n_splits}/{self.num_points}")
+        centered_samples = torch.randn((samps * n_splits, 3), device=self.device)  # Nx3 of axis-aligned scales
+        scaled_samples = (
+            torch.exp(self.scales[split_mask].repeat(samps, 1)) * centered_samples
+        )  # how these scales are rotated
+        quats = self.quats[split_mask] / self.quats[split_mask].norm(dim=-1, keepdim=True)  # normalize them first
+        rots = quat_to_rotmat(quats.repeat(samps, 1))  # how these scales are rotated
+        rotated_samples = torch.bmm(rots, scaled_samples[..., None]).squeeze()
+        new_means = rotated_samples + self.means[split_mask].repeat(samps, 1)
+        # step 2, sample new colors
+        new_features_dc = self.features_dc[split_mask].repeat(samps, 1)
+        new_features_rest = self.features_rest[split_mask].repeat(samps, 1, 1)
+        # step 3, sample new opacities
+        new_opacities = self.opacities[split_mask].repeat(samps, 1)
+        # step 4, sample new scales
+        size_fac = 1.6
+        new_scales = torch.log(torch.exp(self.scales[split_mask]) / size_fac).repeat(samps, 1)
+        if self.config.force_2d:
+            new_scales[:, 2] = -1e10
+        self.scales[split_mask] = torch.log(torch.exp(self.scales[split_mask]) / size_fac)
+        if self.config.force_2d:
+            new_scales[:, 2] = -1e10
+        # step 5, sample new quats
+        new_quats = self.quats[split_mask].repeat(samps, 1)
+        out = {
+            "means": new_means,
+            "features_dc": new_features_dc,
+            "features_rest": new_features_rest,
+            "opacities": new_opacities,
+            "scales": new_scales,
+            "quats": new_quats,
+        }
+        for name, param in self.gauss_params.items():
+            if name not in out:
+                out[name] = param[split_mask].repeat(samps, 1)
+        return out
+
+    def dup_gaussians(self, dup_mask):
+        """
+        This function duplicates gaussians that are too small
+        """
+        n_dups = dup_mask.sum().item()
+        CONSOLE.log(f"Duplicating {dup_mask.sum().item()/self.num_points} gaussians: {n_dups}/{self.num_points}")
+        new_dups = {}
+        for name, param in self.gauss_params.items():
+            new_dups[name] = param[dup_mask]
+        return new_dups
 
     def refinement_after(self, optimizers: Optimizers, step):
         assert step == self.step
@@ -848,12 +914,42 @@ class DNSplatterModel(SplatfactoModel):
 
             sdf_loss = (torch.abs(ideal_sdfs - current_sdfs) / (weight + 1e-5)).mean()
 
+        nd_loss = 0
+        if self.config.use_nd_loss:
+            from dn_splatter.metrics import mean_angular_error
+            c2w = self.camera.camera_to_worlds.squeeze(0).detach()
+            c2w = c2w @ torch.diag(
+                torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=c2w.dtype)
+            )
+            pred_depth_to_normal = normal_from_depth_image(
+                depths=depth_out.detach(),
+                fx=self.camera.fx.item(),
+                fy=self.camera.fy.item(),
+                cx=self.camera.cx.item(),
+                cy=self.camera.cy.item(),
+                img_size=(self.camera.width.item(), self.camera.height.item()),
+                c2w=torch.eye(4, dtype=torch.float, device=depth_out.device),
+                device=self.device,
+                smooth=False,
+            )
+            pred_depth_to_normal = pred_depth_to_normal @ torch.diag(
+                torch.tensor(
+                    [1, -1, -1], device=depth_out.device, dtype=depth_out.dtype
+                )
+            )
+            pred_depth_to_normal = (1 + pred_depth_to_normal) / 2
+            nd_loss += mean_angular_error(
+                pred=(pred_normal.permute(2, 0, 1) - 1) / 2,
+                gt=(pred_depth_to_normal.permute(2, 0, 1) - 1) / 2,
+            ).mean()
+
         main_loss = (
             rgb_loss
             + depth_loss
             + self.config.normal_lambda * normal_loss
             + sparse_loss
             + self.config.sdf_loss_lambda * sdf_loss
+            + self.config.nd_lambda * nd_loss
         )
 
         return {"main_loss": main_loss, "scale_reg": scale_reg}
