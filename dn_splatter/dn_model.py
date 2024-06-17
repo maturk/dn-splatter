@@ -293,7 +293,7 @@ class DNSplatterModel(SplatfactoModel):
             new_scales[:, 2] = -1e10
         self.scales[split_mask] = torch.log(torch.exp(self.scales[split_mask]) / size_fac)
         if self.config.force_2d:
-            new_scales[:, 2] = -1e10
+            self.scales[:, 2] = -1e10
         # step 5, sample new quats
         new_quats = self.quats[split_mask].repeat(samps, 1)
         out = {
