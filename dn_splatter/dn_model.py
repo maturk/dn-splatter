@@ -949,10 +949,9 @@ class DNSplatterModel(SplatfactoModel):
 
         opacity_loss = 0
         if self.config.use_opacity_loss:
-            normalized_opacities = self.opacities - 0.5
-            moderate_opacities_mask = torch.gt(normalized_opacities, 0.01) * torch.le(normalized_opacities, 0.99)
-            # TODO: Make this scale below (20) configurable
-            opacity_loss += (moderate_opacities_mask * torch.exp(-(normalized_opacities ** 2) * 20)).mean 
+            opac = self.opacities
+            moderate_opacities_mask = torch.gt(opac, 0.01) * torch.le(opac, 0.99)
+            opacity_loss += (moderate_opacities_mask * torch.exp(-(opac ** 2) * 20)).mean 
 
         main_loss = (
             rgb_loss
