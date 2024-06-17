@@ -128,7 +128,11 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     use_nd_loss: bool = False
     """Whether to use normal-depth consistency loss like Gaussian Surfels"""
     nd_lambda: float = 0.1
-    """Regularizer for nd lambda"""
+    """Regularizer for nd loss"""
+    use_opacity_loss: bool = False
+    """Whether to use opacity loss like Gaussian Surfels"""
+    opacity_lambda: float = 0.1
+    """Reguarlizer for opacity loss"""
 
 
 class DNSplatterModel(SplatfactoModel):
@@ -943,6 +947,13 @@ class DNSplatterModel(SplatfactoModel):
                 gt=(pred_depth_to_normal.permute(2, 0, 1) - 1) / 2,
             ).mean()
 
+        opacity_loss = 0
+        if self.config.use_opacity_loss:
+            normalized_opacities = self.opacities - 0.5
+            moderate_opacities_mask = torch.gt(normalized_opacities, 0.01) * torch.le(normalized_opacities, 0.99)
+            # TODO: Make this scale below (20) configurable
+            opacity_loss += (moderate_opacities_mask * torch.exp(-(normalized_opacities ** 2) * 20)).mean 
+
         main_loss = (
             rgb_loss
             + depth_loss
@@ -950,6 +961,7 @@ class DNSplatterModel(SplatfactoModel):
             + sparse_loss
             + self.config.sdf_loss_lambda * sdf_loss
             + self.config.nd_lambda * nd_loss
+            + self.config.opacity_lambda * opacity_loss
         )
 
         return {"main_loss": main_loss, "scale_reg": scale_reg}
