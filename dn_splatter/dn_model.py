@@ -127,7 +127,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Config of the camera optimizer to use"""
     output_depth_during_training: bool = True
     """If True, output depth during training. Otherwise, only output depth during evaluation."""
-    
+
     ### Gaussian surfels configs ###
     force_2d: bool = False
     """Whether to force 2D gaussians like Gaussian Surfels"""
@@ -282,12 +282,18 @@ class DNSplatterModel(SplatfactoModel):
         This function splits gaussians that are too large
         """
         n_splits = split_mask.sum().item()
-        CONSOLE.log(f"Splitting {split_mask.sum().item()/self.num_points} gaussians: {n_splits}/{self.num_points}")
-        centered_samples = torch.randn((samps * n_splits, 3), device=self.device)  # Nx3 of axis-aligned scales
+        CONSOLE.log(
+            f"Splitting {split_mask.sum().item()/self.num_points} gaussians: {n_splits}/{self.num_points}"
+        )
+        centered_samples = torch.randn(
+            (samps * n_splits, 3), device=self.device
+        )  # Nx3 of axis-aligned scales
         scaled_samples = (
             torch.exp(self.scales[split_mask].repeat(samps, 1)) * centered_samples
         )  # how these scales are rotated
-        quats = self.quats[split_mask] / self.quats[split_mask].norm(dim=-1, keepdim=True)  # normalize them first
+        quats = self.quats[split_mask] / self.quats[split_mask].norm(
+            dim=-1, keepdim=True
+        )  # normalize them first
         rots = quat_to_rotmat(quats.repeat(samps, 1))  # how these scales are rotated
         rotated_samples = torch.bmm(rots, scaled_samples[..., None]).squeeze()
         new_means = rotated_samples + self.means[split_mask].repeat(samps, 1)
@@ -298,10 +304,14 @@ class DNSplatterModel(SplatfactoModel):
         new_opacities = self.opacities[split_mask].repeat(samps, 1)
         # step 4, sample new scales
         size_fac = 1.6
-        new_scales = torch.log(torch.exp(self.scales[split_mask]) / size_fac).repeat(samps, 1)
+        new_scales = torch.log(torch.exp(self.scales[split_mask]) / size_fac).repeat(
+            samps, 1
+        )
         if self.config.force_2d:
             new_scales[:, 2] = -1e10
-        self.scales[split_mask] = torch.log(torch.exp(self.scales[split_mask]) / size_fac)
+        self.scales[split_mask] = torch.log(
+            torch.exp(self.scales[split_mask]) / size_fac
+        )
         if self.config.force_2d:
             self.scales[:, 2] = -1e10
         # step 5, sample new quats
@@ -318,17 +328,6 @@ class DNSplatterModel(SplatfactoModel):
             if name not in out:
                 out[name] = param[split_mask].repeat(samps, 1)
         return out
-
-    def dup_gaussians(self, dup_mask):
-        """
-        This function duplicates gaussians that are too small
-        """
-        n_dups = dup_mask.sum().item()
-        CONSOLE.log(f"Duplicating {dup_mask.sum().item()/self.num_points} gaussians: {n_dups}/{self.num_points}")
-        new_dups = {}
-        for name, param in self.gauss_params.items():
-            new_dups[name] = param[dup_mask]
-        return new_dups
 
     def refinement_after(self, optimizers: Optimizers, step):
         assert step == self.step
@@ -876,7 +875,9 @@ class DNSplatterModel(SplatfactoModel):
 
         nd_loss = 0
         if self.config.use_nd_loss:
+            pred_normal = outputs["normal"]
             from dn_splatter.metrics import mean_angular_error
+
             c2w = self.camera.camera_to_worlds.squeeze(0).detach()
             c2w = c2w @ torch.diag(
                 torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=c2w.dtype)
@@ -907,7 +908,9 @@ class DNSplatterModel(SplatfactoModel):
         if self.config.use_opacity_loss:
             opac = self.opacities
             moderate_opacities_mask = torch.gt(opac, 0.01) * torch.le(opac, 0.99)
-            opacity_loss += (moderate_opacities_mask * torch.exp(-(opac ** 2) * 20)).mean 
+            opacity_loss += (
+                moderate_opacities_mask * torch.exp(-(opac**2) * 20)
+            ).mean()
 
         main_loss = (
             rgb_loss
