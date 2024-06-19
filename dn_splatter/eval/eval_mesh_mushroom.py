@@ -551,6 +551,7 @@ def main(
     output: Path = Path("."),  # output path
     transform_path: Optional[Path] = None,  # assume nerfacto style mesh as input
     meta_data_path: Optional[Path] = None,  # assume neusfacto style mesh as input
+    output_same_as_pred_mesh: Optional[bool] = True,
 ):
     """Evaluate mushroom dataset meshes
 
@@ -603,6 +604,9 @@ def main(
     pred_mesh = open3d_mesh_from_trimesh(pred_mesh)
 
     pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
+
+    if output_same_as_pred_mesh:
+        output = pred_mesh_path.parent
 
     # evaluate culled mesh
     o3d.io.write_triangle_mesh(str(output / "mesh_cull.ply"), pred_mesh)
