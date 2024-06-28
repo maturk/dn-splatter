@@ -566,17 +566,15 @@ class DNSplatterModel(SplatfactoModel):
             normals = normals @ camera.camera_to_worlds.squeeze(0)[:3, :3]
 
             xys = self.xys[0, ...].detach()
-            self.depths = self.depths[0, ...]
-            self.num_tiles_hit = self.num_tiles_hit[0, ...]
 
             normals_im: Tensor = rasterize_gaussians(  # type: ignore
                 xys,
-                self.depths,
-                self.radii.detach(),
-                self.conics.detach(),
-                self.num_tiles_hit.detach(),
+                self.depths[0, ...],
+                self.radii,
+                self.conics[0,...],
+                self.num_tiles_hit[0,...],
                 normals,
-                torch.sigmoid(opacities_crop).detach(),
+                torch.sigmoid(opacities_crop),
                 H,
                 W,
                 BLOCK_WIDTH,

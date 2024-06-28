@@ -94,7 +94,6 @@ class RenderModel:
 
                 # save all outputs
                 save_outputs_helper(
-                    self.output_dir,
                     rgb_out if self.render_rgb else None,
                     gt_img if self.render_rgb else None,
                     depth_color if self.render_depth else None,
@@ -103,6 +102,7 @@ class RenderModel:
                     depth if self.render_depth else None,
                     normal_gt if self.render_normal else None,
                     normal if self.render_normal else None,
+                    self.output_dir,
                     image_name,
                 )
 
