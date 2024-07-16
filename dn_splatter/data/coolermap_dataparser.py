@@ -178,7 +178,9 @@ class CoolerMapDataParser(ColmapDataParser):
         # load depths
         if self.config.depth_mode != "none" and self.config.load_depths:
             if not (self.config.data / "mono_depth").exists():
-                CONSOLE.print("Load depth has been set to true, but could not find mono_depth path. Trying to generate aligned mono depth frames.")
+                CONSOLE.print(
+                    "Load depth has been set to true, but could not find mono_depth path. Trying to generate aligned mono depth frames."
+                )
                 ColmapToAlignedMonoDepths(
                     data=self.config.data, mono_depth_network=self.config.mono_pretrain
                 ).main()

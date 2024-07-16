@@ -198,6 +198,8 @@ class ScanNetpp(ColmapDataParser):
         if self.config.mode == "iphone":
             num_imgs = len(image_filenames)
             indices = list(range(num_imgs))
+            if self.config.load_every > 1:
+                indices = indices[:: self.config.load_every]
             assert self.config.skip_every_for_val_split >= 1
             eval_indices = indices[:: self.config.skip_every_for_val_split]
             i_eval = [i for i in indices if i in eval_indices]
@@ -205,8 +207,6 @@ class ScanNetpp(ColmapDataParser):
 
         if split == "train":
             indices = i_train
-            if self.config.load_every > 1:
-                indices = indices[:: self.config.load_every]
         elif split in ["val", "test"]:
             indices = i_eval
         else:
@@ -430,32 +430,43 @@ class ScanNetpp(ColmapDataParser):
             if split == "train":
                 metadata.update(
                     {
-                        "mono_depth_filenames": self.mono_depth_filenames
-                        if len(self.mono_depth_filenames) == len(image_filenames)
-                        else [Path(self.mono_depth_filenames[idx]) for idx in indices]
-                        if len(self.mono_depth_filenames) > 0
-                        else None
+                        "mono_depth_filenames": (
+                            self.mono_depth_filenames
+                            if len(self.mono_depth_filenames) == len(image_filenames)
+                            else (
+                                [
+                                    Path(self.mono_depth_filenames[idx])
+                                    for idx in indices
+                                ]
+                                if len(self.mono_depth_filenames) > 0
+                                else None
+                            )
+                        )
                     }
                 )
             else:
                 # dummy data
                 metadata.update(
                     {
-                        "mono_depth_filenames": [
-                            Path(idx)
-                            for idx in self.mono_depth_filenames[: len(image_filenames)]
-                        ]
-                        if len(self.mono_depth_filenames) > 0
-                        else None
+                        "mono_depth_filenames": (
+                            [
+                                Path(idx)
+                                for idx in self.mono_depth_filenames[
+                                    : len(image_filenames)
+                                ]
+                            ]
+                            if len(self.mono_depth_filenames) > 0
+                            else None
+                        )
                     }
                 )
 
         if self.config.depth_mode in ["sensor", "all"]:
             metadata.update(
                 {
-                    "sensor_depth_filenames": depth_filenames
-                    if len(depth_filenames) > 0
-                    else None
+                    "sensor_depth_filenames": (
+                        depth_filenames if len(depth_filenames) > 0 else None
+                    )
                 }
             )
 

@@ -189,7 +189,12 @@ class DNSplatterPipeline(VanillaPipeline):
             task = progress.add_task(
                 "[green]Evaluating all eval images...", total=num_eval
             )
-            for camera, batch in self.datamanager.fixed_indices_eval_dataloader:
+
+            cameras = self.datamanager.eval_dataset.cameras  # type: ignore
+            for image_idx, batch in enumerate(
+                self.datamanager.cached_eval  # Undistorted images
+            ):  # type: ignore
+                camera = cameras[image_idx : image_idx + 1].to("cpu")
                 # time this the following line
                 inner_start = time()
                 outputs = self.model.get_outputs_for_camera(camera=camera)
@@ -254,7 +259,6 @@ class DNSplatterPipeline(VanillaPipeline):
                         points.detach().cpu().numpy(),
                         colors.detach().cpu().numpy(),
                     )
-
                 if (
                     self.datamanager.dataparser.__class__.__name__
                     == "MushroomDataParser"

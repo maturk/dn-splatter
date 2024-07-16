@@ -336,7 +336,6 @@ class MushroomDataParser(DataParser):
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
-
         # in x,y,z order
         # assumes that the scene is centered at the origin
         aabb_scale = self.config.scene_scale
@@ -531,11 +530,11 @@ class MushroomDataParser(DataParser):
             )
             metadata.update(
                 {
-                    "mono_depth_filenames": [
-                        Path(mono_depth_filenames[idx]) for idx in indices
-                    ]
-                    if len(mono_depth_filenames) > 0
-                    else None
+                    "mono_depth_filenames": (
+                        [Path(mono_depth_filenames[idx]) for idx in indices]
+                        if len(mono_depth_filenames) > 0
+                        else None
+                    )
                 }
             )
 
@@ -637,9 +636,9 @@ class MushroomDataParser(DataParser):
             dataparser_scale=scale_factor,
             dataparser_transform=transform_matrix,
             metadata={
-                "sensor_depth_filenames": depth_filenames
-                if len(depth_filenames) > 0
-                else None,
+                "sensor_depth_filenames": (
+                    depth_filenames if len(depth_filenames) > 0 else None
+                ),
                 "depth_unit_scale_factor": self.config.depth_unit_scale_factor,
                 **metadata,
             },

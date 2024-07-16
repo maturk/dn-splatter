@@ -195,6 +195,9 @@ def main(
 
     rst = compute_metrics(pd_mesh_ply, gt_mesh_ply)
 
+    rst = compute_metrics(pd_mesh_ply, gt_mesh_ply)
+    # print(f"Savisng results to: {output / 'metrics.json'}")
+    json.dump(rst, open(pred_mesh.parent / "metrics.json", "w"))
     # mesh metrics:
     #    "Acc": accuracy,  # lower better
     #    "Comp": completeness,  # lower better

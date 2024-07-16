@@ -1,5 +1,6 @@
 import glob
 import json
+import math
 import os
 from copy import deepcopy
 from pathlib import Path
@@ -8,13 +9,18 @@ from typing import Literal, Optional
 import cv2
 import numpy as np
 import open3d as o3d
-import pyrender
 import torch
 import trimesh
 import tyro
 from matplotlib import patches
 from matplotlib import pyplot as plt
+from PIL import Image
+from pytorch3d import transforms as py3d_transform
+from pytorch3d.renderer import MeshRasterizer, PerspectiveCameras, RasterizationSettings
+from pytorch3d.structures import Meshes
 from scipy.spatial import cKDTree
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_threshold_percentage(dist, thresholds):
@@ -200,27 +206,54 @@ def pose6d_to_matrix(batch_poses):
 
 
 def render_depth_maps(mesh, poses, H, W, K, far=10.0):
-    mesh = pyrender.Mesh.from_trimesh(mesh)
-    scene = pyrender.Scene()
-    scene.add(mesh)
-    camera = pyrender.IntrinsicsCamera(
-        fx=K[0, 0], fy=K[1, 1], cx=K[0, 2], cy=K[1, 2], znear=0.01, zfar=far
-    )
-    camera_node = pyrender.Node(camera=camera, matrix=np.eye(4))
-    scene.add_node(camera_node)
-    renderer = pyrender.OffscreenRenderer(W, H)
-    render_flags = pyrender.RenderFlags.OFFSCREEN | pyrender.RenderFlags.DEPTH_ONLY
+    vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
+    faces = torch.tensor(mesh.faces, dtype=torch.int64)
+    mesh = Meshes(verts=[vertices], faces=[faces]).to(device)
 
+    Rz_rot = py3d_transform.euler_angles_to_matrix(
+        torch.tensor([0.0, 0.0, math.pi]), convention="XYZ"
+    ).cuda()
+    K = K.unsqueeze(0)
+    focal_length = torch.stack([K[:, 0, 0], K[:, 1, 1]], dim=-1)
+    principal_point = K[:, :2, 2]
+    image_size = torch.tensor([[H, W]]).cuda()
     depth_maps = []
-    for i in range(poses.shape[0]):
-        scene.set_pose(camera_node, poses[i])
-        depth = renderer.render(scene, render_flags)
-        depth_maps.append(depth)
+    for i, c2w in enumerate(poses):
+        c2w = np.linalg.inv(c2w)
+        c2w = torch.tensor(c2w).cuda().float()
+
+        R = c2w[:3, :3]
+        T = c2w[:3, 3]
+
+        R2 = (Rz_rot @ R).permute(-1, -2)
+        T2 = Rz_rot @ T
+        cameras = PerspectiveCameras(
+            focal_length=focal_length,
+            principal_point=principal_point,
+            R=R2.unsqueeze(0),
+            T=T2.unsqueeze(0),
+            image_size=image_size,
+            in_ndc=False,
+            device=device,
+        )
+
+        raster_settings = RasterizationSettings(
+            image_size=(H, W), blur_radius=0.0, faces_per_pixel=1
+        )
+
+        rasterizer = MeshRasterizer(cameras=cameras, raster_settings=raster_settings)
+        render_img = rasterizer(mesh.to(device)).zbuf[0, ..., 0]
+        render_img = render_img.cpu().numpy()
+
+        render_img[render_img < 0] = 0
+
+        depth_maps.append(render_img)
 
     return depth_maps
 
 
 def render_depth_maps_doublesided(mesh, poses, H, W, K, far=10.0):
+    K = torch.tensor(K).cuda().float()
     depth_maps_1 = render_depth_maps(mesh, poses, H, W, K, far=far)
     mesh.faces[:, [1, 2]] = mesh.faces[:, [2, 1]]
     depth_maps_2 = render_depth_maps(mesh, poses, H, W, K, far=far)
@@ -254,8 +287,8 @@ def cull_from_one_pose(
 ):
     c2w = deepcopy(pose)
     # to OpenCV
-    c2w[:3, 1] *= -1
-    c2w[:3, 2] *= -1
+    # c2w[:3, 1] *= -1
+    # c2w[:3, 2] *= -1
     w2c = np.linalg.inv(c2w)
     rotation = w2c[:3, :3]
     translation = w2c[:3, 3]
@@ -300,18 +333,19 @@ def get_grid_culling_pattern(
     remove_occlusion=True,
     verbose=False,
 ):
+
     obs_mask = np.zeros(points.shape[0])
     invalid_mask = np.zeros(points.shape[0])
-    for i in range(poses.shape[0]):
+    for i, pose in enumerate(poses):
         if verbose:
-            print("Processing pose " + str(i + 1) + " out of " + str(poses.shape[0]))
+            print("Processing pose " + str(i + 1) + " out of " + str(len(poses)))
         rendered_depth = (
             rendered_depth_list[i] if rendered_depth_list is not None else None
         )
         depth_gt = depth_gt_list[i] if depth_gt_list is not None else None
         obs, invalid = cull_from_one_pose(
             points,
-            poses[i],
+            pose,
             H,
             W,
             K,
@@ -324,57 +358,6 @@ def get_grid_culling_pattern(
         invalid_mask = invalid_mask + invalid
 
     return obs_mask, invalid_mask
-
-
-def cull_mesh(mesh_pred, ref_poses, depth_gt_list, H, W, K):
-    os.environ["PYOPENGL_PLATFORM"] = "egl"
-
-    # cull with subdivide
-    vertices = mesh_pred.vertices
-    triangles = mesh_pred.faces
-    vertices, triangles = trimesh.remesh.subdivide_to_size(
-        vertices, triangles, max_edge=0.015, max_iter=10
-    )
-
-    # cull with unseen faces
-    rendered_depth_maps = render_depth_maps_doublesided(
-        mesh_pred, ref_poses, H, W, K, far=10.0
-    )
-
-    # we don't need subdivided mesh to render depth
-    mesh_pred = trimesh.Trimesh(vertices, triangles, process=False)
-    mesh_pred.remove_unreferenced_vertices()
-
-    # # Cull faces
-    points = vertices[:, :3]
-    obs_mask, invalid_mask = get_grid_culling_pattern(
-        points,
-        ref_poses,
-        H,
-        W,
-        K,
-        rendered_depth_list=rendered_depth_maps,
-        depth_gt_list=depth_gt_list,
-        remove_missing_depth=True,
-        remove_occlusion=True,
-        verbose=True,
-    )
-    obs1 = obs_mask[triangles[:, 0]]
-    obs2 = obs_mask[triangles[:, 1]]
-    obs3 = obs_mask[triangles[:, 2]]
-    th1 = 3
-    obs_mask = (obs1 > th1) | (obs2 > th1) | (obs3 > th1)
-    inv1 = invalid_mask[triangles[:, 0]]
-    inv2 = invalid_mask[triangles[:, 1]]
-    inv3 = invalid_mask[triangles[:, 2]]
-    invalid_mask = (inv1 > 0.7 * obs1) & (inv2 > 0.7 * obs2) & (inv3 > 0.7 * obs3)
-    valid_mask = obs_mask & (~invalid_mask)
-    triangles_in_frustum = triangles[valid_mask, :]
-
-    mesh_pred = trimesh.Trimesh(vertices, triangles_in_frustum, process=False)
-    mesh_pred.remove_unreferenced_vertices()
-
-    return mesh_pred
 
 
 def cull_mesh_iphone(mesh_pred):
@@ -545,6 +528,97 @@ def trimesh_from_open3d_mesh(open3d_mesh):
     return tri_mesh
 
 
+# borrowed from go-surf https://github.com/JingwenWang95/go-surf/blob/71bb12549abe86207b4f5bb799ac828014dcaad4/tools/frustum_culling.py#L194
+def cull_mesh(
+    dataset_path,
+    mesh,
+    transformation_files,
+    test_ids,
+    remove_missing_depth=True,
+    remove_occlusion=True,
+    subdivide=True,
+    max_edge=0.015,
+):
+    mesh.remove_unreferenced_vertices()
+    vertices = mesh.vertices
+    triangles = mesh.faces
+
+    print(remove_occlusion)
+
+    if subdivide:
+        vertices, triangles = trimesh.remesh.subdivide_to_size(
+            vertices, triangles, max_edge=max_edge, max_iter=10
+        )
+
+    print("Processed culling by bound")
+    os.environ["PYOPENGL_PLATFORM"] = "egl"
+
+    # load dataset
+    transformation_files = json.load(open(transformation_files, "r"))
+    if "h" in transformation_files:
+        H, W = transformation_files["h"], transformation_files["w"]
+        fl_x, fl_y = transformation_files["fl_x"], transformation_files["fl_y"]
+        cx, cy = transformation_files["cx"], transformation_files["cy"]
+        K = np.array([[fl_x, 0, cx], [0, fl_y, cy], [0, 0, 1]]).astype(np.float32)
+
+    frames = transformation_files["frames"]
+    c2w_list = []
+    depth_gt_list = []
+
+    for i, frame in enumerate(frames):
+        if "h" in frame:
+            H, W = frame["h"], frame["w"]
+            fl_x, fl_y = frame["fl_x"], frame["fl_y"]
+            cx, cy = frame["cx"], frame["cy"]
+            K = np.array([[fl_x, 0, cx], [0, fl_y, cy], [0, 0, 1]]).astype(np.float32)
+        depth_path = dataset_path / Path(frame["depth_file_path"])
+        depth_gt = Image.open(depth_path)
+        depth_gt = np.array(depth_gt) / 1000.0
+        c2w = np.array(frame["transform_matrix"]).astype(np.float32)
+        c2w = c2w @ np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        c2w_list.append(c2w)
+        depth_gt_list.append(depth_gt)
+
+    rendered_depth_maps = render_depth_maps_doublesided(
+        mesh, c2w_list, H, W, K, far=10.0
+    )
+
+    # we don't need subdivided mesh to render depth
+    mesh = trimesh.Trimesh(vertices, triangles, process=False)
+    mesh.remove_unreferenced_vertices()
+
+    # Cull faces
+    points = vertices[:, :3]
+    obs_mask, invalid_mask = get_grid_culling_pattern(
+        points,
+        c2w_list,
+        H,
+        W,
+        K,
+        rendered_depth_list=rendered_depth_maps,
+        depth_gt_list=depth_gt_list,
+        remove_missing_depth=remove_missing_depth,
+        remove_occlusion=remove_occlusion,
+        verbose=True,
+    )
+    obs1 = obs_mask[triangles[:, 0]]
+    obs2 = obs_mask[triangles[:, 1]]
+    obs3 = obs_mask[triangles[:, 2]]
+    th1 = 3
+    obs_mask = (obs1 > th1) | (obs2 > th1) | (obs3 > th1)
+    inv1 = invalid_mask[triangles[:, 0]]
+    inv2 = invalid_mask[triangles[:, 1]]
+    inv3 = invalid_mask[triangles[:, 2]]
+    invalid_mask = (inv1 > 0.7 * obs1) & (inv2 > 0.7 * obs2) & (inv3 > 0.7 * obs3)
+    valid_mask = obs_mask & (~invalid_mask)
+    triangles_in_frustum = triangles[valid_mask, :]
+
+    mesh = trimesh.Trimesh(vertices, triangles_in_frustum, process=False)
+    mesh.remove_unreferenced_vertices()
+
+    return mesh
+
+
 def main(
     gt_mesh_path: Path,  # path to gt mesh folder
     pred_mesh_path: Path,  # path to the pred mesh ply
@@ -567,14 +641,18 @@ def main(
     Returns:
         None
     """
-    gt_mesh = o3d.io.read_triangle_mesh(str(gt_mesh_path / "gt_mesh.ply"))
-    gt_mesh = gt_mesh.remove_unreferenced_vertices()
+    gt_mesh = trimesh.load(
+        str(gt_mesh_path / "gt_mesh.ply"), force="mesh", process=False
+    )
+    # gt_mesh = gt_mesh.remove_unreferenced_vertices()
 
     pred_mesh = trimesh.load(
         pred_mesh_path,
         force="mesh",
         process=False,
     )
+    if output_same_as_pred_mesh:
+        output = pred_mesh_path.parent
 
     # first transfer nerfstudio mesh back to real scale
     if transform_path and transform_path.exists():
@@ -593,7 +671,9 @@ def main(
         initial_transformation = np.array(
             json.load(open(gt_mesh_path / "icp_iphone.json"))["gt_transformation"]
         ).reshape(4, 4)
-        pred_mesh = pred_mesh.apply_transform(initial_transformation)
+
+        gt_mesh = gt_mesh.apply_transform(np.linalg.inv(initial_transformation))
+    # pred_mesh = pred_mesh.apply_transform(initial_transformation)
 
     elif device == "kinect":
         # transfer mesh to align gt mesh
@@ -603,22 +683,62 @@ def main(
         pred_mesh = pred_mesh.apply_transform(initial_transformation)
 
     pred_mesh = open3d_mesh_from_trimesh(pred_mesh)
-
+    gt_mesh = open3d_mesh_from_trimesh(gt_mesh)
+    gt_mesh = gt_mesh.remove_unreferenced_vertices()
     pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
+
+    dataset_path = gt_mesh_path / device / "long_capture"
+
+    transformation_file = dataset_path / "transformations_colmap.json"
+    test_file = dataset_path / "test.txt"
+
+    test_split_path = os.path.join(test_file)
+    if os.path.exists(test_split_path):
+        if os.path.exists(test_split_path):
+            with open(test_split_path) as f:
+                test_frames = f.readlines()
+            test_ids = [x.strip() for x in test_frames]
+    # simplify gt mesh
+    gt_mesh = trimesh_from_open3d_mesh(gt_mesh)
+    pred_mesh = trimesh_from_open3d_mesh(pred_mesh)
+
+    current_vertex_count = len(gt_mesh.vertices)
+    target_vertex_count = current_vertex_count // 2
+    gt_mesh = gt_mesh.simplify_quadratic_decimation(target_vertex_count)
+
+    gt_mesh = cull_mesh(
+        dataset_path,
+        gt_mesh,
+        transformation_file,
+        test_ids,
+        remove_missing_depth=True,
+        remove_occlusion=True,
+        subdivide=True,
+        max_edge=0.015,
+    )
+
+    pred_mesh = cull_mesh(
+        dataset_path,
+        pred_mesh,
+        transformation_file,
+        test_ids,
+        remove_missing_depth=True,
+        remove_occlusion=True,
+        subdivide=True,
+        max_edge=0.015,
+    )
 
     if output_same_as_pred_mesh:
         output = pred_mesh_path.parent
 
+    # gt_mesh.export(str(output / "gt_mesh_cull.ply"))
+    pred_mesh.export(str(output / "mesh_cull.ply"))
     # evaluate culled mesh
-    o3d.io.write_triangle_mesh(str(output / "mesh_cull.ply"), pred_mesh)
     print("finished save and cut the mesh")
 
-    gt_mesh = trimesh_from_open3d_mesh(gt_mesh)
-    pred_mesh = trimesh_from_open3d_mesh(pred_mesh)
-
     rst = compute_metrics(pred_mesh, gt_mesh)
-    print(f"Saving results to: {output / 'metrics.json'}")
-    json.dump(rst, open(output / "metrics.json", "w"))
+    print(f"Saving results to: {output / 'mesh_metrics.json'}")
+    json.dump(rst, open(output / "mesh_metrics.json", "w"))
 
 
 if __name__ == "__main__":
