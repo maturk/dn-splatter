@@ -49,7 +49,7 @@ splatfacto_config = Config(experiment_name="splatfacto")
 dn_splatter_config = Config(
     experiment_name="dn_splatter",
     use_depth_loss=True,
-    use_depth_smooth_loss=True,
+    use_normal_tv_loss=True,
     use_normal_loss=True,
     load_pcd_normals=True,
     use_normal_tv_loss=True,
