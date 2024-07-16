@@ -55,7 +55,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     ### DNSplatter configs ###
     use_depth_loss: bool = False
     """Enable depth loss while training"""
-    depth_loss_type: DepthLossType = DepthLossType.LogL1
+    depth_loss_type: DepthLossType = DepthLossType.EdgeAwareLogL1
     """Choose which depth loss to train with Literal["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1")"""
     depth_tolerance: float = 0.1
     """Min depth value for depth loss"""
@@ -113,7 +113,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """period of steps where refinement is turned off"""
     num_downscales: int = 0
     """at the beginning, resolution is 1/2^d, where d is this number"""
-    use_scale_regularization: bool = True
+    use_scale_regularization: bool = False
     """If enabled, a scale regularization introduced in PhysGauss (https://xpandora.github.io/PhysGaussian/) is used for reducing huge spikey gaussians."""
     max_gauss_ratio: float = 5.0
     """threshold of ratio of gaussian max to min scale before applying regularization
@@ -571,8 +571,8 @@ class DNSplatterModel(SplatfactoModel):
                 xys,
                 self.depths[0, ...],
                 self.radii,
-                self.conics[0,...],
-                self.num_tiles_hit[0,...],
+                self.conics[0, ...],
+                self.num_tiles_hit[0, ...],
                 normals,
                 torch.sigmoid(opacities_crop),
                 H,
