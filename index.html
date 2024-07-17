@@ -1,31 +1,29 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-127PQSMYY6"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-  
+
     gtag('config', 'G-127PQSMYY6');
   </script>
   <meta charset="utf-8">
-  <meta name="description"
-        content="">
+  <meta name="description" content="">
   <meta name="keywords" content="Gaussian splatting,indoor reconstruction,prior regularization">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing</title>
 
-  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
-        rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
   <link href="static/css/twentytwenty.css" rel="stylesheet" type="text/css" />
 
   <link rel="stylesheet" href="./static/css/bulma.min.css">
   <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
   <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
   <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
   <link rel="stylesheet" href="./static/css/index.css">
   <link rel="icon" href="./static/images/favicon.svg">
 
@@ -34,13 +32,15 @@
   <script src="./static/js/bulma-carousel.min.js"></script>
   <script src="./static/js/bulma-slider.min.js"></script>
   <script src="./static/js/index.js"></script>
-  <meta property="og:url"                content="https://maturk.github.io/dn-splatter/" />
-  <meta property="og:title"              content="DN-Splatter" />
-  <meta property="og:description"        content="Depth and normal supervision improves 3DGS novel-view synthesis and mesh reconstruction." />
-  <meta property="og:image"              content="https://maturk.github.io/dn-splatter/static/images/some-preview.png" />
+  <meta property="og:url" content="https://maturk.github.io/dn-splatter/" />
+  <meta property="og:title" content="DN-Splatter" />
+  <meta property="og:description"
+    content="Depth and normal supervision improves 3DGS novel-view synthesis and mesh reconstruction." />
+  <meta property="og:image" content="https://maturk.github.io/dn-splatter/static/images/some-preview.png" />
 
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.2.0/model-viewer.min.js"></script>
 </head>
+
 <body>
 
   <nav class="navbar" role="navigation" aria-label="main navigation">
@@ -53,7 +53,7 @@
     </div>
     <div class="navbar-menu">
       <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
-  
+
         <div class="navbar-item has-dropdown is-hoverable">
           <a class="navbar-link">
             More Research
@@ -68,462 +68,451 @@
           </div>
         </div>
       </div>
-  
+
     </div>
   </nav>
 
-<section class="hero">
-  <div class="hero-body">
-    <div class="container is-max-desktop">
-      <div class="columns is-centered">
-        <div class="column has-text-centered">
-          <h1 class="title is-1 publication-title"><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong>: Depth and Normal Priors for Gaussian Splatting and Meshing</h1>
-          <div class="is-size-5 publication-authors">
-            <span class="author-block">
-              <a href="https://maturk.github.io">Matias Turkulainen</a><sup>*1</sup>,</span>
-            <span class="author-block">
-              <a href="https://xuqianren.github.io">Xuqian Ren</a><sup>*2</sup>,</span>
-            <span class="author-block">
-              <a href="https://imelekhov.com">Iaroslav Melekhov</a><sup>3</sup>,
-            </span>
-            <span class="author-block">
-              <a href="https://oseiskar.github.io">Otto Seiskari</a><sup>4</sup>,
-            </span>
-            <span class="author-block">
-              <a href="https://esa.rahtu.fi">Esa Rahtu</a><sup>2,4</sup>,
-            </span>
-            <span class="author-block">
-              <a href="https://users.aalto.fi/~kannalj1/">Juho Kannala</a><sup>3,4</sup>,
-            </span>
-          </div>
-
-          <div class="is-size-5 publication-authors">
-            <span class="author-block"><sup>1</sup>ETH Zurich,</span>
-            <span class="author-block"><sup>2</sup>Tampere University</span>
-            <span class="author-block"><sup>3</sup>Aalto University</span>
-            <span class="author-block"><sup>4</sup>Spectacular AI</span>
-          </div>
-          <div class="is-size-5 publication-authors">
-            <span class="author-block"><sup>*</sup>Denotes equal contribution</span>
-          </div>
-
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
           <div class="column has-text-centered">
-            <div class="publication-links">
-              <!-- PDF Link. -->
-              <span class="link-block">
-                <a href="https://arxiv.org/abs/2403.17822"
-                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon">
+            <h1 class="title is-1 publication-title"><strong><span style="color: blue;">D</span><span
+                  style="color: red;">N</span>-Splatter</strong>: Depth and Normal Priors for Gaussian Splatting and
+              Meshing</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="https://maturk.github.io">Matias Turkulainen</a><sup>*1</sup>,</span>
+              <span class="author-block">
+                <a href="https://xuqianren.github.io">Xuqian Ren</a><sup>*2</sup>,</span>
+              <span class="author-block">
+                <a href="https://imelekhov.com">Iaroslav Melekhov</a><sup>3</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://oseiskar.github.io">Otto Seiskari</a><sup>4</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://esa.rahtu.fi">Esa Rahtu</a><sup>2</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://users.aalto.fi/~kannalj1/">Juho Kannala</a><sup>3,4</sup>,
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>1</sup>ETH Zurich,</span>
+              <span class="author-block"><sup>2</sup>Tampere University</span>
+              <span class="author-block"><sup>3</sup>Aalto University</span>
+              <span class="author-block"><sup>4</sup>Spectacular AI</span>
+            </div>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>*</sup>Denotes equal contribution</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <!-- PDF Link. -->
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2403.17822" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
                       <i class="ai ai-arxiv"></i>
-                  </span>
-                  <span>arXiv</span>
-                </a>
-              </span>
-              <!-- Code Link. -->
-              <span class="link-block">
-                <a href="https://github.com/maturk/dn-splatter"
-                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon">
-                      <i class="fab fa-github"></i>
-                  </span>
-                  <span>Code</span>
+                    </span>
+                    <span>arXiv</span>
                   </a>
-              </span>
+                </span>
+                <!-- Code Link. -->
+                <span class="link-block">
+                  <a href="https://github.com/maturk/dn-splatter"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code</span>
+                  </a>
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="hero teaser">
-  <div class="container is-max-desktop">
-    <div class="hero-body">
-      <!-- TLDR. -->
-      <div class="content" style="display: flex;">
+  <section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <!-- TLDR. -->
+        <div class="content" style="display: flex;">
           <h2 class="title is-5" style="margin-right: 10px; white-space: nowrap; letter-spacing: -2px;">
             <span style="color: red;">T</span>
             <span style="color: blue;">L</span>
             <span style="color: green;">D</span>
             <span style="color: orange;">R</span>
             <span style="color: black;">:</span>
-            </h2>
+          </h2>
           <div class="content has-text-justified">
             <p>
-                Depth and normal supervision improves 3DGS novel-view synthesis and mesh reconstruction.
+              Depth and normal supervision improves 3DGS novel-view synthesis and mesh reconstruction.
             </p>
           </div>
-      </div>
-      <!--/ TLDR. -->
-    </div>
-  </div>
-</section>
-
-<section class="hero is-light is-small">
-  <div class="container hero-body">
-    <div class="columns is-centered">
-      <div class="column is-one-quarter-desktop has-text-centered">
-        <div class="twentytwenty-container twentytwenty-custom">
-          <img src="static/images/comparisons/vr/splatfacto_depth_long_capture_frame_00081.png" alt="Splatfacto"  >
-          <img src="static/images/comparisons/vr/our_depth_long_capture_frame_00081.png" alt="DN-Splatter"  >
         </div>
-      </div>
-      <div class="column is-one-quarter-desktop has-text-centered">
-        <div class="twentytwenty-container twentytwenty-custom">
-          <img src="static/images/comparisons/vr/splatfacto_normal_long_capture_frame_00081.png" alt="Splatfacto" >
-          <img src="static/images/comparisons/vr/our_normal_long_capture_frame_00081.png" alt="DN-Splatter" >
-        </div>
-      </div>
-      <div class="column is-one-quarter-desktop has-text-centered">
-        <div class="twentytwenty-container twentytwenty-custom">
-          <img src="static/images/comparisons/vr/splatfacto_long_capture_frame_00081.png" alt="Splatfacto" >
-          <img src="static/images/comparisons/vr/our_long_capture_frame_00081.png" alt="DN-Splatter" >
-        </div>
-      </div>
-      <div class="column is-one-quarter-desktop has-text-centered">
-        <div class="twentytwenty-container twentytwenty-custom">
-          <img src="static/images/comparisons/vr/splatfacto_mesh.png" alt="Splatfacto" >
-          <img src="static/images/comparisons/vr/our_mesh.png" alt="DN-Splatter" >
-        </div>
+        <!--/ TLDR. -->
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="section">
-  <div class="container is-max-desktop">
-    <!-- Abstract. -->
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3">Abstract</h2>
-        <div class="content has-text-justified">
-          <p>
-            3D Gaussian splatting, a novel differentiable rendering technique, has achieved state-of-the-art novel view synthesis results with high rendering speeds and relatively low training times. However, its performance on scenes commonly seen in indoor datasets is poor due to the lack of geometric constraints during optimization. We extend 3D Gaussian splatting with depth and normal cues to tackle challenging indoor datasets and showcase techniques for efficient mesh extraction, an important downstream application. Specifically, we regularize the optimization procedure with depth information, enforce local smoothness of nearby Gaussians, and use the geometry of the 3D Gaussians supervised by normal cues to achieve better alignment with the true scene geometry. We improve depth estimation and novel view synthesis results over baselines and show how this simple yet effective regularization technique can be used to directly extract meshes from the Gaussian representation yielding more physically accurate reconstructions on indoor scenes. 
-          </p>
-          
+  <section class="hero is-light is-small">
+    <div class="container hero-body">
+      <div class="columns is-centered">
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="twentytwenty-container twentytwenty-custom">
+            <img src="static/images/comparisons/vr/splatfacto_depth_long_capture_frame_00081.png" alt="Splatfacto">
+            <img src="static/images/comparisons/vr/our_depth_long_capture_frame_00081.png" alt="DN-Splatter">
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="twentytwenty-container twentytwenty-custom">
+            <img src="static/images/comparisons/vr/splatfacto_normal_long_capture_frame_00081.png" alt="Splatfacto">
+            <img src="static/images/comparisons/vr/our_normal_long_capture_frame_00081.png" alt="DN-Splatter">
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="twentytwenty-container twentytwenty-custom">
+            <img src="static/images/comparisons/vr/splatfacto_long_capture_frame_00081.png" alt="Splatfacto">
+            <img src="static/images/comparisons/vr/our_long_capture_frame_00081.png" alt="DN-Splatter">
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="twentytwenty-container twentytwenty-custom">
+            <img src="static/images/comparisons/vr/splatfacto_mesh.png" alt="Splatfacto">
+            <img src="static/images/comparisons/vr/our_mesh.png" alt="DN-Splatter">
+          </div>
         </div>
       </div>
     </div>
-    <!--/ Abstract. -->
-    <!-- Overview. -->
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-4"></h2>
-        <img src="./static/images/overview.png"
-                 alt="Interpolate start reference image."
-                 />
-          <p><strong>Overview: </strong>Depth and normal guided 3DGS results in more photorealistic novel-view synthesis as well as better geometric reconstructions.</p>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <!-- Abstract. -->
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              3D Gaussian splatting, a novel differentiable rendering technique, has achieved state-of-the-art novel
+              view synthesis results with high rendering speeds and relatively low training times. However, its
+              performance on scenes commonly seen in indoor datasets is poor due to the lack of geometric constraints
+              during optimization. We extend 3D Gaussian splatting with depth and normal cues to tackle challenging
+              indoor datasets and showcase techniques for efficient mesh extraction, an important downstream
+              application. Specifically, we regularize the optimization procedure with depth information, enforce local
+              smoothness of nearby Gaussians, and use the geometry of the 3D Gaussians supervised by normal cues to
+              achieve better alignment with the true scene geometry. We improve depth estimation and novel view
+              synthesis results over baselines and show how this simple yet effective regularization technique can be
+              used to directly extract meshes from the Gaussian representation yielding more physically accurate
+              reconstructions on indoor scenes.
+            </p>
+
+          </div>
+        </div>
       </div>
+      <!--/ Abstract. -->
+      <!-- Overview. -->
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-4"></h2>
+          <img src="./static/images/overview.png" alt="Interpolate start reference image." />
+          <p><strong>Overview: </strong>Depth and normal guided 3DGS results in more photorealistic novel-view synthesis
+            as well as better geometric reconstructions.</p>
+        </div>
+      </div>
+
     </div>
+  </section>
 
-  </div>
-</section>
-
-<section class="hero is-light is-small">
+  <section class="hero is-light is-small">
     <!--Vase-->
     <div class="container">
-        <div class="column has-text-centered">
-            <h2 class="title is-3">Videos</h2>
+      <div class="column has-text-centered">
+        <h2 class="title is-3">Videos</h2>
+      </div>
+      <div class="column content has-text-centered">
+        <p>Casually captured iPhone 13 Pro data processed with <strong><span style="color: blue;">D</span><span
+              style="color: red;">N</span>-Splatter</strong>. We visualize depth, normal, and rgb renders as well as
+          exported Poisson meshes and compare against the Splatfacto baseline method. </p>
+      </div>
+      <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/vase/combined_depth.mp4" type="video/mp4">
+          </video>
         </div>
-        <div class="column content has-text-centered">
-            <p>Casually captured iPhone 13 Pro data processed with <strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong>. We visualize depth, normal, and rgb renders as well as exported Poisson meshes and compare against the Splatfacto baseline method. </p>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/vase/combined_normal.mp4" type="video/mp4">
+          </video>
         </div>
-        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/vase/combined_depth.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/vase/combined_normal.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/vase/combined_rgb.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <model-viewer 
-                    alt="Vase Mesh"
-                    src="./static/images/pd/vase_compress.glb"
-                    style="width: 100%; height: 100%;"
-                    camera-controls
-                    camera-orbit="0deg 180deg 1m"
-                    field-of-view="15deg">
-                </model-viewer>
-            </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/vase/combined_rgb.mp4" type="video/mp4">
+          </video>
         </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <model-viewer alt="Vase Mesh" src="./static/images/pd/vase_compress.glb" style="width: 100%; height: 100%;"
+            camera-controls camera-orbit="0deg 180deg 1m" field-of-view="15deg">
+          </model-viewer>
+        </div>
+      </div>
     </div>
     <!--End Vase-->
     <!--Unicorn-->
     <div class="container">
-        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/unicorn/combined_depth.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/unicorn/combined_normal.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="./static/videos/unicorn/combined_rgb.mp4" type="video/mp4">
-                </video>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <model-viewer 
-                    alt="Unicorn Mesh"
-                    src="./static/images/pd/unicorn_compress.glb"
-                    style="width: 100%; height: 100%;"
-                    camera-controls
-                    camera-orbit="0deg 180deg 1m"
-                    field-of-view="20deg">
-                </model-viewer>
-            </div>
+      <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/unicorn/combined_depth.mp4" type="video/mp4">
+          </video>
         </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/unicorn/combined_normal.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/unicorn/combined_rgb.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <model-viewer alt="Unicorn Mesh" src="./static/images/pd/unicorn_compress.glb"
+            style="width: 100%; height: 100%;" camera-controls camera-orbit="0deg 180deg 1m" field-of-view="20deg">
+          </model-viewer>
+        </div>
+      </div>
     </div>
     <!--End Unicorn-->
     <!--Shark-->
     <div class="container">
       <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px;">
-          <div class="column has-text-centered" style="flex: 1; width: 800px">
-              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                  <source src="./static/videos/shark/combined_depth.mp4" type="video/mp4">
-              </video>
-          </div>
-          <div class="column has-text-centered" style="flex: 1; width: 800px">
-              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                  <source src="./static/videos/shark/combined_normal.mp4" type="video/mp4">
-              </video>
-          </div>
-          <div class="column has-text-centered" style="flex: 1; width: 800px">
-              <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                  <source src="./static/videos/shark/combined_rgb.mp4" type="video/mp4">
-              </video>
-          </div>
-          <div class="column has-text-centered" style="flex: 1; width: 800px">
-              <model-viewer 
-                  alt="Shark Mesh"
-                  src="./static/images/pd/shark_compress.glb"
-                  style="width: 100%; height: 100%;"
-                  camera-controls
-                  camera-orbit="0deg 180deg 1m"
-                  field-of-view="20deg">
-              </model-viewer>
-          </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/shark/combined_depth.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/shark/combined_normal.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="./static/videos/shark/combined_rgb.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered" style="flex: 1; width: 800px">
+          <model-viewer alt="Shark Mesh" src="./static/images/pd/shark_compress.glb" style="width: 100%; height: 100%;"
+            camera-controls camera-orbit="0deg 180deg 1m" field-of-view="20deg">
+          </model-viewer>
+        </div>
       </div>
-  </div>
-  <!--End Shark-->
-</section>
-
-
-<section class="section">
-    <div class="container hero-body">
-        <div class="column has-text-centered">
-            <h2 class="title is-3">More Visuals</h2>
-        </div>
-        <!--RGB/Depths-->
-        <p><strong>Depth estimation and novel-view synthesis:</strong></p>
-        <div class="columns is-multiline is-centered">
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/comparisons/sauna/3_long_capture_frame_00448.jpg" alt="Splatfacto"  >
-                    <img src="static/images/comparisons/sauna/4_long_capture_frame_00448.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/comparisons/sauna/5_long_capture_frame_00448.jpg" alt="iPhone depth"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/comparisons/sauna/9_long_capture_frame_00448.jpg" alt="Splatfacto"  >
-                    <img src="static/images/comparisons/sauna/10_long_capture_frame_00448.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/comparisons/sauna/11_long_capture_frame_00448.jpg" alt="iPhone RGB"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/comparisons/table/3_short_capture_frame_00037.jpg" alt="Splatfacto"  >
-                    <img src="static/images/comparisons/table/4_short_capture_frame_00037.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/comparisons/table/5_short_capture_frame_00037.jpg" alt="iPhone depth"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/comparisons/table/9_short_capture_frame_00037.jpg" alt="Splatfacto"  >
-                    <img src="static/images/comparisons/table/10_short_capture_frame_00037.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/comparisons/table/11_short_capture_frame_00037.jpg" alt="iPhone RGB"  >
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!--End RGB/Depths-->
-        <!--Normals-->
-        <p><strong>Normal estimation:</strong></p>
-        <div class="columns is-multiline is-centered">
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/normal/coffee/coffee_rgb_long_capture_frame_00146.png" alt="Splatfacto"  >
-                    <img src="static/images/normal/coffee/coffee_our_long_capture_frame_00146.png" alt="DN-Splatter"  >
-                    <img src="static/images/normal/coffee/coffee_gt_long_capture_frame_00146.png" alt="monocular GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/normal/koivu/koivu_rgb_short_capture_frame_00037.png" alt="Splatfacto"  >
-                    <img src="static/images/normal/koivu/koivu_our_short_capture_frame_00037.png" alt="DN-Splatter"  >
-                    <img src="static/images/normal/koivu/koivu_gt_short_capture_frame_00037.png" alt="monocular GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/normal/sauna_chair/sauna_rgb_long_capture_frame_00448.png" alt="Splatfacto"  >
-                    <img src="static/images/normal/sauna_chair/sauna_our_long_capture_frame_00448.png" alt="DN-Splatter"  >
-                    <img src="static/images/normal/sauna_chair/sauna_gt_long_capture_frame_00448.png" alt="monocular GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/normal/vr/vr_rgb_short_capture_frame_00069.png" alt="Splatfacto"  >
-                    <img src="static/images/normal/vr/vr_our_short_capture_frame_00069.png" alt="DN-Splatter"  >
-                    <img src="static/images/normal/vr/vr_gt_short_capture_frame_00069.png" alt="monocular GT"  >
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!--End Normals-->
-        <!--Meshes row 1-->
-        <p><strong>Mesh reconstruction on real-world indoor scenes: </strong>MuSHRoom dataset reconstructions with iPhone data.</p>
-        <div class="columns is-multiline is-centered">
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/faucet/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/faucet/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/faucet/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/meshes/kitchen/rgb.jpg" alt="Splatfacto"  >
-                    <img src="static/images/meshes/kitchen/our.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/meshes/kitchen/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/floor/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/floor/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/floor/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/sofa/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/sofa/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/sofa/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!--End meshes row 1-->
-        <!--Meshes row 2-->
-        <div class="columns is-multiline is-centered">
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/sofa2/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/sofa2/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/sofa2/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                    <img src="static/images/meshes/table/rgb.jpg" alt="Splatfacto"  >
-                    <img src="static/images/meshes/table/our.jpg" alt="DN-Splatter"  >
-                    <img src="static/images/meshes/table/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/takka/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/takka/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/takka/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-            <div class="column is-one-quarter-desktop has-text-centered">
-                <div class="column is-one-quarter-desktop has-text-centered">
-                    <div class="twentytwenty-container twentytwenty-custom">
-                        <img src="static/images/meshes/sofa3/rgb.jpg" alt="Splatfacto"  >
-                        <img src="static/images/meshes/sofa3/our.jpg" alt="DN-Splatter"  >
-                        <img src="static/images/meshes/sofa3/gt.jpg" alt="GT"  >
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!--End meshes row 2-->
     </div>
-</section>
+    <!--End Shark-->
+  </section>
 
 
-<section class="section">
+  <section class="section">
+    <div class="container hero-body">
+      <div class="column has-text-centered">
+        <h2 class="title is-3">More Visuals</h2>
+      </div>
+      <!--RGB/Depths-->
+      <p><strong>Depth estimation and novel-view synthesis:</strong></p>
+      <div class="columns is-multiline is-centered">
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/comparisons/sauna/3_long_capture_frame_00448.jpg" alt="Splatfacto">
+              <img src="static/images/comparisons/sauna/4_long_capture_frame_00448.jpg" alt="DN-Splatter">
+              <img src="static/images/comparisons/sauna/5_long_capture_frame_00448.jpg" alt="iPhone depth">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/comparisons/sauna/9_long_capture_frame_00448.jpg" alt="Splatfacto">
+              <img src="static/images/comparisons/sauna/10_long_capture_frame_00448.jpg" alt="DN-Splatter">
+              <img src="static/images/comparisons/sauna/11_long_capture_frame_00448.jpg" alt="iPhone RGB">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/comparisons/table/3_short_capture_frame_00037.jpg" alt="Splatfacto">
+              <img src="static/images/comparisons/table/4_short_capture_frame_00037.jpg" alt="DN-Splatter">
+              <img src="static/images/comparisons/table/5_short_capture_frame_00037.jpg" alt="iPhone depth">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/comparisons/table/9_short_capture_frame_00037.jpg" alt="Splatfacto">
+              <img src="static/images/comparisons/table/10_short_capture_frame_00037.jpg" alt="DN-Splatter">
+              <img src="static/images/comparisons/table/11_short_capture_frame_00037.jpg" alt="iPhone RGB">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--End RGB/Depths-->
+      <!--Normals-->
+      <p><strong>Normal estimation:</strong></p>
+      <div class="columns is-multiline is-centered">
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/normal/coffee/coffee_rgb_long_capture_frame_00146.png" alt="Splatfacto">
+              <img src="static/images/normal/coffee/coffee_our_long_capture_frame_00146.png" alt="DN-Splatter">
+              <img src="static/images/normal/coffee/coffee_gt_long_capture_frame_00146.png" alt="monocular GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/normal/koivu/koivu_rgb_short_capture_frame_00037.png" alt="Splatfacto">
+              <img src="static/images/normal/koivu/koivu_our_short_capture_frame_00037.png" alt="DN-Splatter">
+              <img src="static/images/normal/koivu/koivu_gt_short_capture_frame_00037.png" alt="monocular GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/normal/sauna_chair/sauna_rgb_long_capture_frame_00448.png" alt="Splatfacto">
+              <img src="static/images/normal/sauna_chair/sauna_our_long_capture_frame_00448.png" alt="DN-Splatter">
+              <img src="static/images/normal/sauna_chair/sauna_gt_long_capture_frame_00448.png" alt="monocular GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/normal/vr/vr_rgb_short_capture_frame_00069.png" alt="Splatfacto">
+              <img src="static/images/normal/vr/vr_our_short_capture_frame_00069.png" alt="DN-Splatter">
+              <img src="static/images/normal/vr/vr_gt_short_capture_frame_00069.png" alt="monocular GT">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--End Normals-->
+      <!--Meshes row 1-->
+      <p><strong>Mesh reconstruction on real-world indoor scenes: </strong>MuSHRoom dataset reconstructions with iPhone
+        data.</p>
+      <div class="columns is-multiline is-centered">
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/faucet/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/faucet/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/faucet/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/kitchen/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/kitchen/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/kitchen/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/floor/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/floor/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/floor/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/sofa/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/sofa/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/sofa/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--End meshes row 1-->
+      <!--Meshes row 2-->
+      <div class="columns is-multiline is-centered">
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/sofa2/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/sofa2/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/sofa2/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/table/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/table/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/table/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/takka/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/takka/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/takka/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-quarter-desktop has-text-centered">
+          <div class="column is-one-quarter-desktop has-text-centered">
+            <div class="twentytwenty-container twentytwenty-custom">
+              <img src="static/images/meshes/sofa3/rgb.jpg" alt="Splatfacto">
+              <img src="static/images/meshes/sofa3/our.jpg" alt="DN-Splatter">
+              <img src="static/images/meshes/sofa3/gt.jpg" alt="GT">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--End meshes row 2-->
+    </div>
+  </section>
+
+
+  <section class="section">
     <div class="container hero-body">
       <!--Mesh Comparisons-->
       <div class="column has-text-centered">
-          <h2 class="title is-3">Mesh Comparisons</h2>
-          <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
+        <h2 class="title is-3">Mesh Comparisons</h2>
+        <p>Reconstruction on the Honka scene from MuSHRoom dataset</p>
       </div>
       <div class="container">
-        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+        <div class="container"
+          style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
           <div class="column has-text-centered" style="flex: 1; width: 800px">
             <p>Splatfacto</p>
-            <model-viewer 
-                alt="honka Mesh"
-                src="./static/images/pd/splatfacto_honka_compress.glb"
-                style="width: 100%; height: 100%;"
-                camera-controls
-                camera-orbit="0deg 180deg 1m"
-                field-of-view="30deg">
+            <model-viewer alt="honka Mesh" src="./static/images/pd/splatfacto_honka_compress.glb"
+              style="width: 100%; height: 100%;" camera-controls camera-orbit="0deg 180deg 1m" field-of-view="30deg">
             </model-viewer>
           </div>
           <div class="column has-text-centered" style="flex: 1; width: 800px">
             <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
-            <model-viewer 
-                alt="honka Mesh"
-                src="./static/images/pd/dn_splatter_honka_compress.glb"
-                style="width: 100%; height: 100%;"
-                camera-controls
-                camera-orbit="0deg 180deg 1m"
-                field-of-view="30deg">
+            <model-viewer alt="honka Mesh" src="./static/images/pd/dn_splatter_honka_compress.glb"
+              style="width: 100%; height: 100%;" camera-controls camera-orbit="0deg 180deg 1m" field-of-view="30deg">
             </model-viewer>
           </div>
         </div>
@@ -531,101 +520,102 @@
       <div class="column has-text-centered">
         <br>
         <p>Reconstruction on the Sauna scene from MuSHRoom dataset</p>
-    </div>
-    <div class="container">
-        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <p>Splatfacto</p>
-                <model-viewer 
-                    alt="Unicorn Mesh"
-                    src="static/images/pd/splatfacto_sauna_compress.glb"
-                    style="width: 100%; height: 100%;"
-                    camera-controls
-                    camera-orbit="0deg 180deg 1m"
-                    field-of-view="30deg">
-                </model-viewer>
-            </div>
-            <div class="column has-text-centered" style="flex: 1; width: 800px">
-                <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
-                <model-viewer 
-                    alt="Unicorn Mesh"
-                    src="static/images/pd/dn_splatter_sauna_compress.glb"
-                    style="width: 100%; height: 100%;"
-                    camera-controls
-                    camera-orbit="0deg 180deg 1m"
-                    field-of-view="30deg">
-                </model-viewer>
-            </div>
+      </div>
+      <div class="container">
+        <div class="container"
+          style="display: flex; justify-content: center; flex-wrap: wrap; width: 800px; height: 400px;">
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+            <p>Splatfacto</p>
+            <model-viewer alt="Unicorn Mesh" src="static/images/pd/splatfacto_sauna_compress.glb"
+              style="width: 100%; height: 100%;" camera-controls camera-orbit="0deg 180deg 1m" field-of-view="30deg">
+            </model-viewer>
+          </div>
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+            <p><strong><span style="color: blue;">D</span><span style="color: red;">N</span>-Splatter</strong></p>
+            <model-viewer alt="Unicorn Mesh" src="static/images/pd/dn_splatter_sauna_compress.glb"
+              style="width: 100%; height: 100%;" camera-controls camera-orbit="0deg 180deg 1m" field-of-view="30deg">
+            </model-viewer>
+          </div>
         </div>
-    </div>
+      </div>
       <!--End mesh comparisons-->
     </div>
-</section>
+  </section>
 
-<section class="section">
+  <section class="section">
     <div class="container hero-body">
-        <div class="column has-text-centered">
-            <h2 class="title is-3">Normal Supervision Comparison</h2>
-            <p>Comparison of normal supervision with the gradient of rendered depths and monocular normal supervision.</p>
-        </div>
-        <div class="container">
-            <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 400px;">
-                <div class="column has-text-centered" style="flex: 1; width: 800px">
-                    <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                        <source src="./static/videos/vase/vase_compare_normal_supervision_compressed.mp4" type="video/mp4">
-                    </video>
-                </div>
-        </div>
-    </div>
-</div>
-</div>
-</section>
-
-<section class="section">
-  <div class="container is-max-desktop">
-    <!-- Concurrent Work. -->
-    <div class="columns is-centered">
-      <div class="column is-full-width">
-        <h2 class="title is-3">Concurrent work</h2>
-        <div class="content has-text-justified">
-          <p>
-            Check out some interesting projects related to 3DGS:
-          </p>
-          <p style="margin-bottom: 5px;"><strong>Depth supervision:</strong></p>
-          <a href="https://github.com/robot0321/DepthRegularizedGS">Depth-Regularized Optimization for 3D Gaussian Splatting in Few-Shot Images </a>
-          <br><br>
-          <p style="margin-bottom: 5px;"><strong>Meshing:</strong></p>
-          <a href="https://github.com/Anttwo/SuGaR">SuGaR: Surface-Aligned Gaussian Splatting for Efficient 3D Mesh Reconstruction and High-Quality Mesh Rendering</a><br>
-          <a href="https://surfsplatting.github.io">2DGS: 2D Gaussian Splatting for Geometrically Accurate Radiance Fields</a><br>
-          <a href="https://arxiv.org/abs/2312.00846">NeuSG: Neural Implicit Surface Reconstruction with 3D Gaussian Splatting Guidance</a>
-          <br><br>
-          <p style="margin-bottom: 5px;"><strong>Normals:</strong></p>
-          <a href="https://nju-3dv.github.io/projects/Relightable3DGaussian/">Relightable 3D Gaussian</a><br>
-          <a href="https://github.com/lzhnb/GS-IR">GS-IR: 3D Gaussian Splatting for Inverse Rendering</a>
-          <br><br>
-          <p style="margin-bottom: 5px;"><strong>3DGS from casual video:</strong></p>
-          <a href="https://github.com/SpectacularAI/3dgs-deblur">Gaussian Splatting on the Move:
-            Blur and Rolling Shutter Compensation for Natural Camera Motion</a><br>
-          <a href="https://github.com/WU-CVGL/BAD-Gaussians">BAD-Gaussians: Bundle-Adjusted Deblur Gaussian Splatting</a>
+      <div class="column has-text-centered">
+        <h2 class="title is-3">Normal Supervision Comparison</h2>
+        <p>Comparison of normal supervision with the gradient of rendered depths and monocular normal supervision.</p>
+      </div>
+      <div class="container">
+        <div class="container" style="display: flex; justify-content: center; flex-wrap: wrap; width: 400px;">
+          <div class="column has-text-centered" style="flex: 1; width: 800px">
+            <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: contain;">
+              <source src="./static/videos/vase/vase_compare_normal_supervision_compressed.mp4" type="video/mp4">
+            </video>
+          </div>
         </div>
       </div>
     </div>
-    <!--/ Concurrent Work. -->
-  </div>
-</section>
+    </div>
+  </section>
 
-<section class="section" id="Acknowledgements">
-  <div class="container is-max-desktop content">
-    <h2 class="title">Acknowledgements</h2>
-    <p>I want to thank <a href="https://tobiasfshr.github.io">Tobias Fischer</a>, <a href="https://pengsongyou.github.io">Songyou Peng</a>, and <a href="https://github.com/Phil26AT">Philipp Lindenberger</a> for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the <a href="https://github.com/nerfstudio-project/nerfstudio">Nerfstudio</a> team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.</p>
-    </code></pre>
-  </div>
-</section>
+  <section class="section">
+    <div class="container is-max-desktop">
+      <!-- Concurrent Work. -->
+      <div class="columns is-centered">
+        <div class="column is-full-width">
+          <h2 class="title is-3">Concurrent work</h2>
+          <div class="content has-text-justified">
+            <p>
+              Check out some interesting projects related to 3DGS:
+            </p>
+            <p style="margin-bottom: 5px;"><strong>Depth supervision:</strong></p>
+            <a href="https://github.com/robot0321/DepthRegularizedGS">Depth-Regularized Optimization for 3D Gaussian
+              Splatting in Few-Shot Images </a>
+            <br><br>
+            <p style="margin-bottom: 5px;"><strong>Meshing:</strong></p>
+            <a href="https://github.com/Anttwo/SuGaR">SuGaR: Surface-Aligned Gaussian Splatting for Efficient 3D Mesh
+              Reconstruction and High-Quality Mesh Rendering</a><br>
+            <a href="https://surfsplatting.github.io">2DGS: 2D Gaussian Splatting for Geometrically Accurate Radiance
+              Fields</a><br>
+            <a href="https://arxiv.org/abs/2312.00846">NeuSG: Neural Implicit Surface Reconstruction with 3D Gaussian
+              Splatting Guidance</a>
+            <br><br>
+            <p style="margin-bottom: 5px;"><strong>Normals:</strong></p>
+            <a href="https://nju-3dv.github.io/projects/Relightable3DGaussian/">Relightable 3D Gaussian</a><br>
+            <a href="https://github.com/lzhnb/GS-IR">GS-IR: 3D Gaussian Splatting for Inverse Rendering</a>
+            <br><br>
+            <p style="margin-bottom: 5px;"><strong>3DGS from casual video:</strong></p>
+            <a href="https://github.com/SpectacularAI/3dgs-deblur">Gaussian Splatting on the Move:
+              Blur and Rolling Shutter Compensation for Natural Camera Motion</a><br>
+            <a href="https://github.com/WU-CVGL/BAD-Gaussians">BAD-Gaussians: Bundle-Adjusted Deblur Gaussian
+              Splatting</a>
+          </div>
+        </div>
+      </div>
+      <!--/ Concurrent Work. -->
+    </div>
+  </section>
 
-<section class="section" id="BibTeX">
-  <div class="container is-max-desktop content">
-    <h2 class="title">BibTeX</h2>
-    <pre><code>@misc{turkulainen2024dnsplatter,
+  <section class="section" id="Acknowledgements">
+    <div class="container is-max-desktop content">
+      <h2 class="title">Acknowledgements</h2>
+      <p>I want to thank <a href="https://tobiasfshr.github.io">Tobias Fischer</a>, <a
+          href="https://pengsongyou.github.io">Songyou Peng</a>, and <a href="https://github.com/Phil26AT">Philipp
+          Lindenberger</a> for their fruitful discussions and guidance, especially concerning mesh reconstruction. This
+        project is built on various open-source software, and I want to thank the <a
+          href="https://github.com/nerfstudio-project/nerfstudio">Nerfstudio</a> team for their great efforts
+        maintaining and extending a large project allowing for these kinds of extensions to exist.</p>
+      </code></pre>
+    </div>
+  </section>
+
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>@misc{turkulainen2024dnsplatter,
         title={DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing}, 
         author={Matias Turkulainen and Xuqian Ren and Iaroslav Melekhov and Otto Seiskari and Esa Rahtu and Juho Kannala},
         year={2024},
@@ -633,19 +623,20 @@
         archivePrefix={arXiv},
         primaryClass={cs.CV}
 }</code></pre>
-  </div>
-</section>
+    </div>
+  </section>
 
 
-<footer class="footer">
+  <footer class="footer">
     <div class="container">
       <div class="columns is-centered">
         <div class="column is-8">
           <div class="content has-text-centered">
             <p>
-              This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
+              This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC
+                BY-SA 4.0</a>
               and is based on the <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> site.
-            </p>          
+            </p>
           </div>
         </div>
       </div>
@@ -653,18 +644,20 @@
   </footer>
 
 
-<!-- Bootstrap core JavaScript -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-<script src="static/css/bootstrap.min.js"></script>
-<!-- <script src="/js/offcanvas.js"></script> -->
-<script src="static/css/jquery.event.move.js"></script>
-<script src="static/css/jquery.twentytwenty.js"></script>
+  <!-- Bootstrap core JavaScript -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script src="static/css/bootstrap.min.js"></script>
+  <!-- <script src="/js/offcanvas.js"></script> -->
+  <script src="static/css/jquery.event.move.js"></script>
+  <script src="static/css/jquery.twentytwenty.js"></script>
 
-<script>
-$(window).load(function(){$(".twentytwenty-container").twentytwenty({default_offset_pct: 0.5});});
-</script>
+  <script>
+    $(window).load(function () { $(".twentytwenty-container").twentytwenty({ default_offset_pct: 0.5 }); });
+  </script>
 </body>
+
 </html>
 
 </body>
+
 </html>
