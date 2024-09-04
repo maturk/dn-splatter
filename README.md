@@ -47,6 +47,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
+- 04.09.2024: Support Open3d TSDF to extract texture mesh, support colmap SFM point cloud initialization for MuSHRoom dataset, support Patch-based Depth Correlation Loss borrowed from [SparseGS](https://github.com/ForMyCat/SparseGS) for monocular depth supervision.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
 - 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
 - 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
@@ -121,9 +122,10 @@ We also provide a `dn-splatter-big` variant that increases the number of Gaussia
 ## Mesh
 To extract a mesh, run the following command:
 ```bash
-gs-mesh {dn, tsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
+gs-mesh {dn, tsdf, sugar-coarse, gaussians, marching, o3dtsdf} --load-config [PATH] --output-dir [PATH]
 ```
-We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh tsdf` for smaller object scale captures. 
+We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh tsdf` for smaller object scale captures.
+Using `gs-mesh o3dtsdf` to extract with tsdf implementation from open3d to get texture mesh.
 
 Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
 | gs-mesh |  Description | Requires normals?|
