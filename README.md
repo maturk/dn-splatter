@@ -3,9 +3,12 @@
 ### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
 
 This repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
+<p align="center">
+    <img src="./assets/pipeline_crop.jpg" alt="Pipeline" width="600"/>
+</p>
+Demo:
 
 https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
-
 <!-- CONTENTS -->
 <details open="open" style='padding: 10px; border-radius:5px 30px 30px 5px; border-style: solid; border-width: 1px;'>
   <summary>Table of Contents</summary>
@@ -44,6 +47,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
+- 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
 - 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
 - 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
 ## Installation
@@ -55,6 +59,7 @@ Clone and install DN-Splatter
 conda activate nerfstudio
 git clone https://github.com/maturk/dn-splatter
 cd dn_splatter/
+pip install setuptools==69.5.1
 pip install -e .
 ```
 ### Method 2. Using Pixi
@@ -392,10 +397,15 @@ ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH]
 
 # Evaluation
 
+Please see `dn_splatter/eval/eval_instructions.md` for more details.
+
+To run DN-Splatter on an entire dataset of sequences, you can use the `dn_splatter/eval/batch_run.py` script.
+
 For evaluating rgb, depth, and pointcloud metrics (optional), run the following command:
 ```bash
-ns-eval --load-config [PATH_TO_CONFIG] --output-path [JSON_OUTPUT_PATH] --render-output-path [eval_res/experiment_name/final_renders]
+ns-eval --load-config [PATH_TO_CONFIG] --output-path [JSON_OUTPUT_PATH]
 ```
+
 To render train/eval images also add the flag `--render-output-path [PATH_TO_IMAGES]`
 
 To get mesh metrics for the MuSHRoom dataset, run the following command:
@@ -405,7 +415,7 @@ python dn_splatter/eval/eval_mesh_mushroom_vis_cull.py --gt_mesh_path [GT_Mesh_P
 
 To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run the following command:
 ```bash
-python dn_splatter/eval/eval_mesh.py --gt_mesh [GT_Mesh_Path] --pred_mesh [Pred_Mesh_Path]
+python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pred-mesh-path [Pred_Mesh_Path]
 ```
 
 # Acknowledgements

@@ -3,7 +3,7 @@ import json
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import cv2
 import numpy as np
@@ -12,7 +12,8 @@ import pyrender
 import torch
 import trimesh
 import tyro
-from matplotlib import patches, pyplot as plt
+from matplotlib import patches
+from matplotlib import pyplot as plt
 from scipy.spatial import cKDTree
 
 
@@ -546,48 +547,44 @@ def trimesh_from_open3d_mesh(open3d_mesh):
 
 def main(
     gt_mesh_path: Path,  # path to gt mesh folder
-    pred_mesh_path: Path,  # path to the pred mesh folder
+    pred_mesh_path: Path,  # path to the pred mesh ply
     device: Literal["kinect", "iphone"] = "iphone",
-    method: Literal["nerfacto", "gs", "neusfacto", "tsdf"] = "gs",
+    output: Path = Path("."),  # output path
+    transform_path: Optional[Path] = None,  # assume nerfacto style mesh as input
+    meta_data_path: Optional[Path] = None,  # assume neusfacto style mesh as input
+    output_same_as_pred_mesh: Optional[bool] = True,
 ):
+    """Evaluate mushroom dataset meshes
+
+    Args:
+        gt_mesh_path: Path to gt mesh folder ../room_datasets/[scene_name]
+        pred_mesh_path: Path to predicted mesh .ply
+        device: iphone or kinect sequence
+        output: output path
+        transform_path: transform path for depth-nerfacto/nerfacto models
+        meta_data_path: meta data path for sdfstudio / monosdf / neusfacto models
+
+    Returns:
+        None
+    """
     gt_mesh = o3d.io.read_triangle_mesh(str(gt_mesh_path / "gt_mesh.ply"))
     gt_mesh = gt_mesh.remove_unreferenced_vertices()
-    if method == "nerfacto":
-        pred_mesh = trimesh.load(
-            str(pred_mesh_path / "mesh" / "poisson_mesh.ply"),
-            force="mesh",
-            process=False,
-        )
-    elif method == "gs":
-        pred_mesh = trimesh.load(
-            str(pred_mesh_path / "mesh" / "DepthAndNormalMapsPoisson_poisson_mesh.ply"),
-            force="mesh",
-            process=False,
-        )
-    elif method == "tsdf":
-        pred_mesh = trimesh.load(
-            str(pred_mesh_path / "tsdf" / "TSDFfusion_mesh.ply"),
-            force="mesh",
-            process=False,
-        )
-    elif method == "neusfacto":
-        pred_mesh = trimesh.load(
-            str(pred_mesh_path / "mesh" / "neusfacto.ply"), force="mesh", process=False
-        )
+
+    pred_mesh = trimesh.load(
+        pred_mesh_path,
+        force="mesh",
+        process=False,
+    )
 
     # first transfer nerfstudio mesh back to real scale
-    if method in ["nerfacto", "gs", "tsdf"]:
-        nerf_scale = json.load(open(pred_mesh_path / "dataparser_transforms.json"))[
-            "scale"
-        ]
+    if transform_path and transform_path.exists():
+        nerf_scale = json.load(open(transform_path))["scale"]
         scale_mat = np.eye(4).astype(np.float32)
         scale_mat[:3] *= nerf_scale
         align_T = np.linalg.inv(scale_mat)
         pred_mesh.apply_transform(align_T)
-    elif method == "neusfacto":
-        meta = load_from_json(
-            os.path.join(gt_mesh_path / device / "sdfstudio_data" / "meta_data.json")
-        )
+    if meta_data_path and meta_data_path.exists():
+        meta = load_from_json(os.path.join(meta_data_path))
         inverse_matrix = meta["worldtogt"]
         pred_mesh.apply_transform(inverse_matrix)
 
@@ -606,23 +603,22 @@ def main(
         pred_mesh = pred_mesh.apply_transform(initial_transformation)
 
     pred_mesh = open3d_mesh_from_trimesh(pred_mesh)
-    if gt_mesh_path.name in ["activity", "computer"]:
-        print(gt_mesh_path.name)
-        pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=False)
-    else:
-        pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
+
+    pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
+
+    if output_same_as_pred_mesh:
+        output = pred_mesh_path.parent
 
     # evaluate culled mesh
-    o3d.io.write_triangle_mesh(
-        str(pred_mesh_path / "mesh" / "poisson_mesh_cull.ply"), pred_mesh
-    )
+    o3d.io.write_triangle_mesh(str(output / "mesh_cull.ply"), pred_mesh)
     print("finished save and cut the mesh")
 
     gt_mesh = trimesh_from_open3d_mesh(gt_mesh)
     pred_mesh = trimesh_from_open3d_mesh(pred_mesh)
 
     rst = compute_metrics(pred_mesh, gt_mesh)
-    json.dump(rst, open(pred_mesh_path / "mesh" / "metrics.json", "w"))
+    print(f"Saving results to: {output / 'metrics.json'}")
+    json.dump(rst, open(output / "metrics.json", "w"))
 
 
 if __name__ == "__main__":

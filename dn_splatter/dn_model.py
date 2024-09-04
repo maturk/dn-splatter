@@ -17,14 +17,18 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
-from dn_splatter.metrics import DepthMetrics, RGBMetrics, NormalMetrics
+from dn_splatter.metrics import DepthMetrics, NormalMetrics, RGBMetrics
 from dn_splatter.utils.camera_utils import get_colored_points_from_depth, project_pix
 from dn_splatter.utils.knn import knn_sk
 from dn_splatter.utils.normal_utils import normal_from_depth_image
-from gsplat._torch_impl import quat_to_rotmat
-from gsplat.project_gaussians import project_gaussians
-from gsplat.rasterize import rasterize_gaussians
-from gsplat.sh import num_sh_bases, spherical_harmonics
+
+try:
+    from gsplat.rendering import rasterization
+except ImportError:
+    print("Please install gsplat>=1.0.0")
+from gsplat import rasterize_gaussians
+from gsplat.cuda_legacy._torch_impl import quat_to_rotmat
+from gsplat.cuda_legacy._wrapper import num_sh_bases
 from nerfstudio.cameras.camera_optimizers import CameraOptimizer, CameraOptimizerConfig
 from nerfstudio.cameras.cameras import Cameras
 from nerfstudio.data.scene_box import OrientedBox
@@ -34,11 +38,11 @@ from nerfstudio.engine.callbacks import (
     TrainingCallbackLocation,
 )
 from nerfstudio.engine.optimizers import Optimizers
-from nerfstudio.model_components import renderers
 from nerfstudio.models.splatfacto import (
     RGB2SH,
     SplatfactoModel,
     SplatfactoModelConfig,
+    get_viewmat,
 )
 from nerfstudio.utils.colors import get_color
 from nerfstudio.utils.rich_utils import CONSOLE
@@ -51,7 +55,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     ### DNSplatter configs ###
     use_depth_loss: bool = False
     """Enable depth loss while training"""
-    depth_loss_type: DepthLossType = DepthLossType.LogL1
+    depth_loss_type: DepthLossType = DepthLossType.EdgeAwareLogL1
     """Choose which depth loss to train with Literal["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1")"""
     depth_tolerance: float = 0.1
     """Min depth value for depth loss"""
@@ -109,7 +113,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """period of steps where refinement is turned off"""
     num_downscales: int = 0
     """at the beginning, resolution is 1/2^d, where d is this number"""
-    use_scale_regularization: bool = True
+    use_scale_regularization: bool = False
     """If enabled, a scale regularization introduced in PhysGauss (https://xpandora.github.io/PhysGaussian/) is used for reducing huge spikey gaussians."""
     max_gauss_ratio: float = 5.0
     """threshold of ratio of gaussian max to min scale before applying regularization
@@ -126,6 +130,8 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Regularizer for pearson depth loss"""
 
     """Config of the camera optimizer to use"""
+    output_depth_during_training: bool = True
+    """If True, output depth during training. Otherwise, only output depth during evaluation."""
 
 
 class DNSplatterModel(SplatfactoModel):
@@ -312,7 +318,6 @@ class DNSplatterModel(SplatfactoModel):
                             dim=0,
                         )
                     )
-
                 # append zeros to the max_2Dsize tensor
                 self.max_2Dsize = torch.cat(
                     [
@@ -409,6 +414,7 @@ class DNSplatterModel(SplatfactoModel):
     def get_outputs(
         self, camera: Cameras
     ) -> Dict[str, Union[torch.Tensor, List[Tensor]]]:
+
         """Takes in a Ray Bundle and returns a dictionary of outputs.
 
         Args:
@@ -418,53 +424,40 @@ class DNSplatterModel(SplatfactoModel):
         Returns:
             Outputs of model. (ie. rendered colors)
         """
-        # get the background color
-        if self.training:
-            if self.config.background_color == "random":
-                background = torch.rand(3, device=self.device)
-            elif self.config.background_color == "white":
-                background = torch.ones(3, device=self.device)
-            elif self.config.background_color == "black":
-                background = torch.zeros(3, device=self.device)
-            else:
-                background = self.background_color.to(self.device)
-        else:
-            if renderers.BACKGROUND_COLOR_OVERRIDE is not None:
-                background = renderers.BACKGROUND_COLOR_OVERRIDE.to(self.device)
-            else:
-                background = self.background_color.to(self.device)
+        if not isinstance(camera, Cameras):
+            print("Called get_outputs with not a camera")
+            return {}
 
+        if self.training:
+            assert camera.shape[0] == 1, "Only one camera at a time"
+            optimized_camera_to_world = self.camera_optimizer.apply_to_camera(camera)
+        else:
+            optimized_camera_to_world = camera.camera_to_worlds
+
+        # binary opacities
+        if self.config.use_binary_opacities and self.step > self.config.warmup_length:
+            skip_steps = self.config.reset_alpha_every * self.config.refine_every
+            margin = 200
+            if not self.step % skip_steps == 0 and self.step % skip_steps not in range(
+                1, margin + 1
+            ):
+                self.opacities = torch.where(
+                    self.opacities >= self.config.binary_opacities_threshold,
+                    torch.ones_like(self.opacities),
+                    torch.zeros_like(self.opacities),
+                )
+
+        # cropping
         if self.crop_box is not None and not self.training:
             crop_ids = self.crop_box.within(self.means).squeeze()
             if crop_ids.sum() == 0:
-                return {
-                    "rgb": background.repeat(
-                        int(camera.height.item()), int(camera.width.item()), 1
-                    )
-                }
+                return self.get_empty_outputs(
+                    int(camera.width.item()),
+                    int(camera.height.item()),
+                    self.background_color,
+                )
         else:
             crop_ids = None
-        camera_downscale = self._get_downscale_factor()
-        camera.rescale_output_resolution(1 / camera_downscale)
-        # shift the camera to center of scene looking at center
-        R = camera.camera_to_worlds[0, :3, :3]  # 3 x 3
-        T = camera.camera_to_worlds[0, :3, 3:4]  # 3 x 1
-        # flip the z and y axes to align with gsplat conventions
-        R_edit = torch.diag(
-            torch.tensor([1, -1, -1], device=self.device, dtype=R.dtype)
-        )
-        R = R @ R_edit
-        # analytic matrix inverse to get world2camera matrix
-        R_inv = R.T
-        T_inv = -R_inv @ T
-        viewmat = torch.eye(4, device=R.device, dtype=R.dtype)
-        viewmat[:3, :3] = R_inv
-        viewmat[:3, 3:4] = T_inv
-        # calculate the FOV of the camera given fx and fy, width and height
-        cx = camera.cx.item()
-        cy = camera.cy.item()
-        W, H = int(camera.width.item()), int(camera.height.item())
-        self.last_size = (H, W)
 
         if crop_ids is not None:
             opacities_crop = self.opacities[crop_ids]
@@ -488,115 +481,73 @@ class DNSplatterModel(SplatfactoModel):
         BLOCK_WIDTH = (
             16  # this controls the tile size of rasterization, 16 is a good default
         )
-        self.xys, self.depths, self.radii, self.conics, self.comp, self.num_tiles_hit, cov3d = project_gaussians(  # type: ignore
-            means_crop,
-            torch.exp(scales_crop),
-            1,
-            quats_crop / quats_crop.norm(dim=-1, keepdim=True),
-            viewmat.squeeze()[:3, :],
-            camera.fx.item(),
-            camera.fy.item(),
-            cx,
-            cy,
-            H,
-            W,
-            BLOCK_WIDTH,
-        )  # type: ignore
-        if (self.radii).sum() == 0:
-            return {
-                "rgb": background.repeat(
-                    int(camera.height.item()), int(camera.width.item()), 1
-                )
-            }
-
-        # rescale the camera back to original dimensions before returning
-        camera.rescale_output_resolution(camera_downscale)
-
-        if (self.radii).sum() == 0:
-            rgb = background.repeat(H, W, 1)
-            depth = background.new_ones(*rgb.shape[:2], 1) * 10
-            accumulation = background.new_zeros(*rgb.shape[:2], 1)
-
-            return {
-                "rgb": rgb,
-                "depth": depth,
-                "accumulation": accumulation,
-                "background": background,
-            }
-
-        # Important to allow xys grads to populate properly
-        if self.training:
-            self.xys.retain_grad()
-
-        if self.config.sh_degree > 0:
-            viewdirs = (
-                means_crop.detach() - camera.camera_to_worlds.detach()[..., :3, 3]
-            )  # (N, 3)
-            viewdirs = viewdirs / viewdirs.norm(dim=-1, keepdim=True)
-            n = min(self.step // self.config.sh_degree_interval, self.config.sh_degree)
-            rgbs = spherical_harmonics(n, viewdirs, colors_crop)
-            rgbs = torch.clamp(rgbs + 0.5, min=0.0)  # type: ignore
-        else:
-            rgbs = torch.sigmoid(colors_crop[:, 0, :])
-
-        assert (self.num_tiles_hit > 0).any()  # type: ignore
+        camera_scale_fac = self._get_downscale_factor()
+        camera.rescale_output_resolution(1 / camera_scale_fac)
+        viewmat = get_viewmat(optimized_camera_to_world)
+        K = camera.get_intrinsics_matrices().cuda()
+        W, H = int(camera.width.item()), int(camera.height.item())
+        self.last_size = (H, W)
+        camera.rescale_output_resolution(camera_scale_fac)  # type: ignore
 
         # apply the compensation of screen space blurring to gaussians
-        opacities = None
-        if self.config.rasterize_mode == "antialiased":
-            opacities = torch.sigmoid(opacities_crop) * self.comp[:, None]
-        elif self.config.rasterize_mode == "classic":
-            opacities = torch.sigmoid(opacities_crop)
-        else:
+        if self.config.rasterize_mode not in ["antialiased", "classic"]:
             raise ValueError("Unknown rasterize_mode: %s", self.config.rasterize_mode)
 
-        if self.config.use_binary_opacities and self.step > self.config.warmup_length:
-            skip_steps = self.config.reset_alpha_every * self.config.refine_every
-            margin = 200
-            if not self.step % skip_steps == 0 and self.step % skip_steps not in range(
-                1, margin + 1
-            ):
-                opacities = torch.where(
-                    opacities >= self.config.binary_opacities_threshold,
-                    torch.ones_like(opacities),
-                    torch.zeros_like(opacities),
-                )
+        render_mode = "RGB+ED"
 
-        rgb, alpha = rasterize_gaussians(  # type: ignore
-            self.xys,
-            self.depths,
-            self.radii,
-            self.conics,
-            self.num_tiles_hit,  # type: ignore
-            rgbs,
-            opacities,
-            H,
-            W,
-            BLOCK_WIDTH,
-            background=background,
-            return_alpha=True,
-        )  # type: ignore
-        alpha = alpha[..., None]
-        rgb = torch.clamp(rgb, max=1.0)  # type: ignore
+        if self.config.sh_degree > 0:
+            sh_degree_to_use = min(
+                self.step // self.config.sh_degree_interval, self.config.sh_degree
+            )
+        else:
+            colors_crop = torch.sigmoid(colors_crop)
+            sh_degree_to_use = None
 
-        # depth image
-        depth_im = rasterize_gaussians(  # type: ignore
-            self.xys,
-            self.depths,
-            self.radii,
-            self.conics,
-            self.num_tiles_hit,
-            self.depths[:, None].repeat(1, 3),
-            opacities,
-            H,
-            W,
-            BLOCK_WIDTH,
-            background=torch.zeros(3, device=self.device),
-        )[..., 0:1]
-        depth_im = torch.where(alpha > 0, depth_im / alpha, depth_im.detach().max())
+        render, alpha, info = rasterization(
+            means=means_crop,
+            quats=quats_crop / quats_crop.norm(dim=-1, keepdim=True),
+            scales=torch.exp(scales_crop),
+            opacities=torch.sigmoid(opacities_crop).squeeze(-1),
+            colors=colors_crop,
+            viewmats=viewmat,  # [1, 4, 4]
+            Ks=K,  # [1, 3, 3]
+            width=W,
+            height=H,
+            tile_size=BLOCK_WIDTH,
+            packed=False,
+            near_plane=0.01,
+            far_plane=1e10,
+            render_mode=render_mode,
+            sh_degree=sh_degree_to_use,
+            sparse_grad=False,
+            absgrad=True,
+            rasterize_mode=self.config.rasterize_mode,
+            # set some threshold to disregrad small gaussians for faster rendering.
+            # radius_clip=3.0,
+        )
+        if self.training and info["means2d"].requires_grad:
+            info["means2d"].retain_grad()
+        self.xys = info["means2d"]  # [1, N, 2]
+        self.radii = info["radii"][0]  # [N]
+        alpha = alpha[:, ...]
+        self.depths = info["depths"]
+        self.conics = info["conics"]
+        self.num_tiles_hit = info["tiles_per_gauss"]
+
+        background = self._get_background_color()
+        rgb = render[:, ..., :3] + (1 - alpha) * background
+        rgb = torch.clamp(rgb, 0.0, 1.0)
 
         # visible gaussians
         self.vis_indices = torch.where(self.radii > 0)[0]
+
+        if render_mode == "RGB+ED":
+            depth_im = render[:, ..., 3:4]
+            depth_im = torch.where(
+                alpha > 0, depth_im, depth_im.detach().max()
+            ).squeeze(0)
+        else:
+            depth_im = None
 
         normals_im = torch.full(rgb.shape, 0.0)
         if self.config.predict_normals:
@@ -618,12 +569,15 @@ class DNSplatterModel(SplatfactoModel):
             self.gauss_params["normals"] = normals
             # convert normals from world space to camera space
             normals = normals @ camera.camera_to_worlds.squeeze(0)[:3, :3]
+
+            xys = self.xys[0, ...].detach()
+
             normals_im: Tensor = rasterize_gaussians(  # type: ignore
-                self.xys,
-                self.depths,
+                xys,
+                self.depths[0, ...],
                 self.radii,
-                self.conics,
-                self.num_tiles_hit,
+                self.conics[0, ...],
+                self.num_tiles_hit[0, ...],
                 normals,
                 torch.sigmoid(opacities_crop),
                 H,
@@ -640,10 +594,10 @@ class DNSplatterModel(SplatfactoModel):
         self.camera = camera
 
         return {
-            "rgb": rgb,
+            "rgb": rgb.squeeze(0),
             "depth": depth_im,
             "normal": normals_im,
-            "accumulation": alpha,
+            "accumulation": alpha.squeeze(0),
             "background": background,
         }
 
@@ -908,7 +862,9 @@ class DNSplatterModel(SplatfactoModel):
 
         metrics_dict = {}
         gt_rgb = gt_img.to(self.device)  # RGB or RGBA image
-        predicted_rgb = outputs["rgb"]
+        predicted_rgb = (
+            outputs["rgb"][0, ...] if outputs["rgb"].dim() == 4 else outputs["rgb"]
+        )
 
         # comment out for now, as it will slow down the training speed.
         (psnr, ssim, lpips) = self.rgb_metrics(
@@ -926,9 +882,14 @@ class DNSplatterModel(SplatfactoModel):
         metrics_dict["gaussian_count"] = self.num_points
 
         if self.config.use_depth_loss and "sensor_depth" in batch:
-            depth_out = outputs["depth"]
+            predicted_depth = (
+                outputs["depth"][0, ...]
+                if outputs["depth"].dim() == 4
+                else outputs["depth"]
+            )
+            predicted_depth = outputs["depth"]
             (abs_rel, sq_rel, rmse, rmse_log, a1, a2, a3) = self.depth_metrics(
-                depth_out.permute(2, 0, 1), sensor_depth_gt.permute(2, 0, 1)
+                predicted_depth.permute(2, 0, 1), sensor_depth_gt.permute(2, 0, 1)
             )
 
             depth_metrics = {
@@ -965,11 +926,19 @@ class DNSplatterModel(SplatfactoModel):
         """
 
         gt_rgb = batch["image"].to(self.device)
-        predicted_rgb = outputs[
-            "rgb"
-        ]  # Blended with background (black if random background)
-        predicted_depth = outputs["depth"]
-        predicted_normal = outputs["normal"]
+        predicted_rgb = (
+            outputs["rgb"][0, ...] if outputs["rgb"].dim() == 4 else outputs["rgb"]
+        )
+        predicted_depth = (
+            outputs["depth"][0, ...]
+            if outputs["depth"].dim() == 4
+            else outputs["depth"]
+        )
+        predicted_normal = (
+            outputs["normal"][0, ...]
+            if outputs["normal"].dim() == 4
+            else outputs["normal"]
+        )
 
         combined_rgb = torch.cat([gt_rgb, predicted_rgb], dim=1)
         combined_depth = (

@@ -331,7 +331,11 @@ def get_grid_culling_pattern(
     depth_gt_list=None,
     remove_missing_depth=True,
     remove_occlusion=True,
+<<<<<<< HEAD
     verbose=True,
+=======
+    verbose=False,
+>>>>>>> main
 ):
 
     obs_mask = np.zeros(points.shape[0])
