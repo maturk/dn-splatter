@@ -331,11 +331,7 @@ def get_grid_culling_pattern(
     depth_gt_list=None,
     remove_missing_depth=True,
     remove_occlusion=True,
-<<<<<<< HEAD
     verbose=True,
-=======
-    verbose=False,
->>>>>>> main
 ):
 
     obs_mask = np.zeros(points.shape[0])
@@ -735,7 +731,6 @@ def main(
     if output_same_as_pred_mesh:
         output = pred_mesh_path.parent
 
-    # gt_mesh.export(str(output / "gt_mesh_cull.ply"))
     pred_mesh.export(str(output / "mesh_cull.ply"))
     # evaluate culled mesh
     print("finished save and cut the mesh")
