@@ -228,7 +228,9 @@ Downgrading from Torch 2.1.2 to 2.0.1 solves the issue.
 ### Generate only mono depth estimates skipping SfM alignment:
 To skip SfM alignment and just render monocular depths for your dataset, use the following script:
 ```bash
-python dn_splatter/scripts/depth_from_pretrain.py --data-dir [path_to_data_root] \
+python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
+                                      --skip-colmap-to-depths  --skip_alignment \
+                                      
 ```
 
 ## Custom Data

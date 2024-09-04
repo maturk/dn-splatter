@@ -952,8 +952,10 @@ class DNSplatterModel(SplatfactoModel):
         predicted_normal = outputs["normal"]
 
         combined_rgb = torch.cat([gt_rgb, predicted_rgb], dim=1)
-        combined_depth = predicted_depth # a placeholder if no sensor depth is available
-        combined_normal = predicted_normal # a placeholder if no gt normal is available
+        combined_depth = (
+            predicted_depth  # a placeholder if no sensor depth is available
+        )
+        combined_normal = predicted_normal  # a placeholder if no gt normal is available
 
         # Switch images from [H, W, C] to [1, C, H, W] for metrics computations
         gt_rgb = torch.moveaxis(gt_rgb, -1, 0)[None, ...]
@@ -1011,7 +1013,8 @@ class DNSplatterModel(SplatfactoModel):
             gt_normal = batch["normal"].to(self.device)
 
             (mae, rmse, mean_err, med_err) = self.normal_metrics(
-                predicted_normal.permute(2, 0, 1).unsqueeze(0), gt_normal.permute(2, 0, 1).unsqueeze(0)
+                predicted_normal.permute(2, 0, 1).unsqueeze(0),
+                gt_normal.permute(2, 0, 1).unsqueeze(0),
             )
             normal_metrics = {
                 "normal_mae": float(mae.item()),
@@ -1022,8 +1025,11 @@ class DNSplatterModel(SplatfactoModel):
             metrics_dict.update(normal_metrics)
             combined_normal = torch.cat([gt_normal, predicted_normal], dim=1)
 
-
-        images_dict = {"img": combined_rgb, "depth": combined_depth, "normal": combined_normal}
+        images_dict = {
+            "img": combined_rgb,
+            "depth": combined_depth,
+            "normal": combined_normal,
+        }
 
         return metrics_dict, images_dict
 
