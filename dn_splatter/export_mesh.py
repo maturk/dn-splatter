@@ -842,9 +842,126 @@ class TSDFFusion(GSMeshExporter):
             )
 
 
+@dataclass
+class Open3DTSDFFusion(GSMeshExporter):
+    """
+    Backproject depths and run TSDF fusion
+    """
+
+    voxel_size: float = 0.01
+    """tsdf voxel size"""
+    sdf_truc: float = 0.03
+    """TSDF truncation"""
+    depth_trunc: float = 4
+
+    def main(self):
+        import open3d as o3d
+
+        if not self.output_dir.exists():
+            self.output_dir.mkdir(parents=True)
+
+        _, pipeline, _, _ = eval_setup(self.load_config)
+
+        assert isinstance(pipeline.model, SplatfactoModel)
+
+        model: SplatfactoModel = pipeline.model
+
+        volume = o3d.pipelines.integration.ScalableTSDFVolume(
+            voxel_length=self.voxel_size,
+            sdf_trunc=self.sdf_truc,
+            color_type=o3d.pipelines.integration.TSDFVolumeColorType.RGB8,
+        )
+
+        with torch.no_grad():
+            cameras: Cameras = pipeline.datamanager.train_dataset.cameras  # type: ignore
+            # TODO: do eval dataset as well
+
+            for image_idx, data in enumerate(
+                pipeline.datamanager.train_dataset
+            ):  # type: ignore
+                mask = None
+                if "mask" in data:
+                    mask = data["mask"]
+                camera = cameras[image_idx : image_idx + 1]
+                outputs = model.get_outputs_for_camera(camera=camera)
+                assert "depth" in outputs
+                depth_map = outputs["depth"]
+                c2w = torch.eye(4, dtype=torch.float, device=depth_map.device)
+                c2w[:3, :4] = camera.camera_to_worlds.squeeze(0)
+                c2w = c2w @ torch.diag(
+                    torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=torch.float)
+                )
+
+                H, W = camera.height.item(), camera.width.item()
+                intrinsic = o3d.camera.PinholeCameraIntrinsic(
+                    width=W,
+                    height=H,
+                    fx=camera.fx.item(),
+                    fy=camera.fy.item(),
+                    cx=camera.cx.item(),
+                    cy=camera.cy.item(),
+                )
+                rgb_map = outputs["rgb"]
+                if mask is not None:
+                    depth_map[~mask] = 0
+
+                rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
+                    o3d.geometry.Image(
+                        np.asarray(
+                            rgb_map.cpu().numpy() * 255,
+                            order="C",
+                            dtype=np.uint8,
+                        )
+                    ),
+                    o3d.geometry.Image(
+                        np.asarray(depth_map.squeeze(-1).cpu().numpy(), order="C")
+                    ),
+                    depth_trunc=self.depth_trunc,
+                    convert_rgb_to_intensity=False,
+                    depth_scale=1.0,
+                )
+
+                volume.integrate(
+                    rgbd,
+                    intrinsic=intrinsic,
+                    extrinsic=np.linalg.inv(c2w.cpu().numpy()),
+                )
+
+            mesh = volume.extract_triangle_mesh()
+
+            mesh_0 = mesh
+            with o3d.utility.VerbosityContextManager(
+                o3d.utility.VerbosityLevel.Debug
+            ) as cm:
+                (
+                    triangle_clusters,
+                    cluster_n_triangles,
+                    cluster_area,
+                ) = mesh_0.cluster_connected_triangles()
+
+            triangle_clusters = np.asarray(triangle_clusters)
+            cluster_n_triangles = np.asarray(cluster_n_triangles)
+            cluster_area = np.asarray(cluster_area)
+            n_cluster = np.sort(cluster_n_triangles.copy())[-50]
+            n_cluster = max(n_cluster, 50)  # filter meshes smaller than 50
+            triangles_to_remove = cluster_n_triangles[triangle_clusters] < n_cluster
+            mesh_0.remove_triangles_by_mask(triangles_to_remove)
+            mesh_0.remove_unreferenced_vertices()
+            mesh_0.remove_degenerate_triangles()
+
+            o3d.io.write_triangle_mesh(
+                str(self.output_dir / "Open3dTSDFfusion_mesh.ply"),
+                mesh,
+            )
+            CONSOLE.print(
+                f"Finished computing mesh: {str(self.output_dir / 'Open3dTSDFfusion.ply')}"
+            )
+
+
 Commands = tyro.conf.FlagConversionOff[
     Union[
         Annotated[TSDFFusion, tyro.conf.subcommand(name="tsdf")],
+        Annotated[Open3DTSDFFusion, tyro.conf.subcommand(name="o3dtsdf")],
         Annotated[DepthAndNormalMapsPoisson, tyro.conf.subcommand(name="dn")],
         Annotated[LevelSetExtractor, tyro.conf.subcommand(name="sugar-coarse")],
         Annotated[GaussiansToPoisson, tyro.conf.subcommand(name="gaussians")],
