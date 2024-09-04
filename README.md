@@ -314,6 +314,18 @@ ns-train dn-splatter \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode [kinect/iphone]
 ```
+To run mushroom iPhone sequence with colmap SFM initialized point cloud:
+```bash
+python dn_splatter/scripts/poses_to_colmap_sfm.py --transforms_path [path/transformations_colmap.json] --run_colmap
+
+ns-train dn-splatter \
+--pipeline.model.use-depth-loss True \
+--pipeline.model.sensor-depth-lambda 0.2 \
+--pipeline.model.use-depth-smooth-loss True \
+--pipeline.model.use-normal-loss True \
+--pipeline.model.normal-supervision (mono/depth) \
+mushroom --data [DATASET_PATH] --mode iphone --create_pc_from_colmap True
+```
 
 ### [Replica](https://github.com/facebookresearch/Replica-Dataset/)
 Download the dataset with `python dn_splatter/data/download_scripts/replica_download.py`
@@ -388,7 +400,7 @@ To render train/eval images also add the flag `--render-output-path [PATH_TO_IMA
 
 To get mesh metrics for the MuSHRoom dataset, run the following command:
 ```bash
-python dn_splatter/eval/eval_mesh_mushroom.py --gt_mesh_path [GT_Mesh_Path] --pred_mesh_path [Pred_Mesh_Path] --device [iphone/kinect] --method [nerfacto/gs/neusfacto/tsdf]
+python dn_splatter/eval/eval_mesh_mushroom_vis_cull.py --gt_mesh_path [GT_Mesh_Path] --pred_mesh_path [Pred_Mesh_Path] --output --device [iphone/kinect] 
 ```
 
 To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run the following command:

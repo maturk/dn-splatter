@@ -120,6 +120,11 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     camera_optimizer: CameraOptimizerConfig = field(
         default_factory=lambda: CameraOptimizerConfig(mode="off")
     )
+
+    # pearson depth loss lambda
+    pearson_lambda: float = 0
+    """Regularizer for pearson depth loss"""
+
     """Config of the camera optimizer to use"""
 
 
@@ -715,6 +720,21 @@ class DNSplatterModel(SplatfactoModel):
                         depth_out, mono_depth_gt.float(), gt_img, valid_gt_mask
                     )
                     depth_loss += self.config.mono_depth_lambda * mono_depth_loss
+                elif self.config.depth_loss_type == DepthLossType.PearsonDepth:
+                    mono_depth_loss_pearson = (
+                        self.depth_loss(depth_out, mono_depth_gt.float())
+                        * valid_gt_mask.sum()
+                    ) / valid_gt_mask.sum()
+                    local_depth_loss = DepthLoss(DepthLossType.LocalPearsonDepthLoss)
+                    mono_depth_loss_local = (
+                        local_depth_loss(depth_out, mono_depth_gt.float())
+                        * valid_gt_mask.sum()
+                    ) / valid_gt_mask.sum()
+                    depth_loss += self.config.mono_depth_lambda * (
+                        mono_depth_loss_pearson
+                        + self.config.pearson_lambda * mono_depth_loss_local
+                    )
+
                 else:
                     mono_depth_loss = self.depth_loss(
                         depth_out[valid_gt_mask], mono_depth_gt[valid_gt_mask].float()
@@ -1538,9 +1558,11 @@ class DNSplatterModel(SplatfactoModel):
             assert intersection_points.shape[0] == intersection_normals.shape[0]
             indices = random.sample(
                 range(intersection_points.shape[0]),
-                num_samples
-                if num_samples < intersection_points.shape[0]
-                else intersection_points.shape[0],
+                (
+                    num_samples
+                    if num_samples < intersection_points.shape[0]
+                    else intersection_points.shape[0]
+                ),
             )
             samples_mask = torch.tensor(indices, device=points.device)
             intersection_points = intersection_points[samples_mask]

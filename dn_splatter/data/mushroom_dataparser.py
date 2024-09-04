@@ -73,7 +73,7 @@ class MushroomDataParserConfig(DataParserConfig):
     """Whether to use faro scanner depth files in dataparser"""
     use_faro_scanner_pd: bool = False
     """Whether to use faro scanner point data in dataparser"""
-    depth_mode: Literal["sensor", "all"] = "sensor"
+    depth_mode: Literal["sensor", "all", "mono"] = "sensor"
     """Which depth data to load"""
     mono_pretrain: Literal["zoe"] = "zoe"
     """Which mono depth pretrain model to use."""
@@ -89,6 +89,8 @@ class MushroomDataParserConfig(DataParserConfig):
     """If no ground truth normals, generate normals either from sensor depths or from pretrained model."""
     load_pcd_normals: bool = True
     """Whether to load pcd normals for normal initialisation"""
+    create_pc_from_colmap: bool = False
+    """Whether to create pointclouds from colmap for the mushroom data."""
 
     # general configs
     downscale_factor: Optional[int] = None
@@ -438,14 +440,35 @@ class MushroomDataParser(DataParser):
             )
         else:
             if self.config.mode == "iphone":
-                # load iphone polycam point data
-                iphone_ply_file_path = long_data_dir / self.config.iphone_ply_name
-                if not iphone_ply_file_path.exists():
-                    CONSOLE.log(
-                        f"[bold yellow] could not find polycam pointcloud path {iphone_ply_file_path}. Trying to reconstruct it from available data..."
-                    )
-                    generate_iPhone_pointcloud_within_sequence(long_data_dir)
+                if not self.config.create_pc_from_colmap:
+                    # create pointcloud from depth
+                    iphone_ply_file_path = long_data_dir / self.config.iphone_ply_name
+                    if not iphone_ply_file_path.exists():
+                        CONSOLE.log(
+                            f"[bold yellow] could not find polycam pointcloud path {iphone_ply_file_path}. Trying to reconstruct it from available data..."
+                        )
+                        generate_iPhone_pointcloud_within_sequence(long_data_dir)
 
+                else:
+                    # create pointcloud from colmap sfm
+                    from nerfstudio.process_data.colmap_utils import (
+                        create_ply_from_colmap,
+                    )
+
+                    ply_filename = "sparse_pc.ply"
+                    applied_transform = np.eye(4)[:3, :]
+                    applied_transform = applied_transform[np.array([0, 2, 1]), :]
+                    applied_transform[2, :] *= -1
+                    create_ply_from_colmap(
+                        filename=ply_filename,
+                        recon_dir=long_data_dir / "sparse/0",
+                        output_dir=long_data_dir,
+                        applied_transform=torch.tensor(
+                            applied_transform,
+                            dtype=torch.float32,
+                        ),
+                    )
+                    iphone_ply_file_path = long_data_dir / ply_filename
                 # load iphone point data
                 metadata.update(
                     self._load_3D_points(
@@ -483,7 +506,7 @@ class MushroomDataParser(DataParser):
             )
 
         # process depths
-        if self.config.depth_mode == "all":
+        if self.config.depth_mode == "all" or self.config.depth_mode == "mono":
             self.depth_save_dir = long_data_dir / Path("mono_depth")
             if (
                 not self.depth_save_dir.exists()
@@ -502,7 +525,7 @@ class MushroomDataParser(DataParser):
             long_mono_depth_filenames = [
                 Path(frame)
                 for frame in long_mono_depth_filenames
-                if Path(frame).name in long_name_list
+                if Path(frame).stem + ".png" in long_name_list
             ]
 
             self.depth_save_dir = short_data_dir / Path("mono_depth")
@@ -523,7 +546,7 @@ class MushroomDataParser(DataParser):
             short_mono_depth_filenames = [
                 Path(frame)
                 for frame in short_mono_depth_filenames
-                if Path(frame).name in short_name_list
+                if Path(frame).stem + ".png" in short_name_list
             ]
 
             mono_depth_filenames = (
@@ -531,11 +554,20 @@ class MushroomDataParser(DataParser):
             )
             metadata.update(
                 {
-                    "mono_depth_filenames": [
-                        Path(mono_depth_filenames[idx]) for idx in indices
-                    ]
-                    if len(mono_depth_filenames) > 0
-                    else None
+                    "mono_depth_filenames": (
+                        [Path(mono_depth_filenames[idx]) for idx in indices]
+                        if len(mono_depth_filenames) > 0
+                        else None
+                    )
+                }
+            )
+
+        if self.config.depth_mode == "all" or self.config.depth_mode == "sensor":
+            metadata.update(
+                {
+                    "sensor_depth_filenames": (
+                        depth_filenames if len(depth_filenames) > 0 else None
+                    ),
                 }
             )
 
@@ -637,9 +669,6 @@ class MushroomDataParser(DataParser):
             dataparser_scale=scale_factor,
             dataparser_transform=transform_matrix,
             metadata={
-                "sensor_depth_filenames": depth_filenames
-                if len(depth_filenames) > 0
-                else None,
                 "depth_unit_scale_factor": self.config.depth_unit_scale_factor,
                 **metadata,
             },
@@ -670,7 +699,13 @@ class MushroomDataParser(DataParser):
 
     def get_depth_filepaths(self):
         """Helper to load depth paths"""
-        return natsorted(glob.glob(f"{self.depth_save_dir}/*.png"))
+        files = os.listdir(self.depth_save_dir)
+        if any(file.endswith(".npy") for file in files):
+            extension = "npy"
+        else:
+            extension = "png"
+
+        return natsorted(glob.glob(f"{self.depth_save_dir}/*.{extension}"))
 
     def _load_3D_points(
         self, ply_file_path: Path, transform_matrix: torch.Tensor, scale_factor: float
