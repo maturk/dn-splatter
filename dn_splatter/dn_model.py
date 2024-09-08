@@ -75,7 +75,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Regularizer for smooth loss"""
     predict_normals: bool = True
     """Whether to extract and render normals or skip this"""
-    use_normal_loss: bool = False
+    use_normal_loss: bool = True
     """Enables normal loss('s)"""
     use_normal_cosine_loss: bool = False
     """Cosine similarity loss"""
@@ -248,8 +248,16 @@ class DNSplatterModel(SplatfactoModel):
             self.regularization_strategy = DNRegularization()
         else:
             raise NotImplementedError
-        self.regularization_strategy.depth_loss_type = self.config.depth_loss_type
-        self.regularization_strategy.depth_loss = self.depth_loss
+
+        if self.config.use_depth_loss:
+            self.regularization_strategy.depth_loss_type = self.config.depth_loss_type
+            self.regularization_strategy.depth_loss = self.depth_loss
+        else:
+            self.regularization_strategy.depth_loss_type = None
+            self.regularization_strategy.depth_loss = None
+
+        if not self.config.use_normal_loss:
+            self.regularization_strategy.normal_loss = None
 
     @property
     def normals(self):

@@ -3,7 +3,7 @@ from abc import abstractmethod
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from typing import Optional
 from dn_splatter.losses import DepthLoss, DepthLossType, NormalLoss, NormalLossType
 
 
@@ -126,7 +126,7 @@ class DNRegularization(RegularizationStrategy):
     def __init__(
         self,
         depth_tolerance: float = 0.1,
-        depth_loss_type: DepthLossType = DepthLossType.EdgeAwareLogL1,
+        depth_loss_type: Optional[DepthLossType] = DepthLossType.EdgeAwareLogL1,
         depth_lambda: float = 0.2,
         normal_lambda: float = 0.1,
     ):
@@ -145,8 +145,11 @@ class DNRegularization(RegularizationStrategy):
     def get_loss(self, pred_depth, gt_depth, pred_normal, gt_normal, **kwargs):
         """Regularization loss"""
 
-        depth_loss = self.get_depth_loss(pred_depth, gt_depth, **kwargs)
-        normal_loss = self.get_normal_loss(pred_normal, gt_normal, **kwargs)
+        depth_loss, normal_loss = 0.0, 0.0
+        if self.depth_loss is not None:
+            depth_loss = self.get_depth_loss(pred_depth, gt_depth, **kwargs)
+        if self.normal_loss is not None:
+            normal_loss = self.get_normal_loss(pred_normal, gt_normal, **kwargs)
         scales = kwargs["scales"]
         scale_loss = self.get_scale_loss(scales=scales)
         return depth_loss + normal_loss + scale_loss
