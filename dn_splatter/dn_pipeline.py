@@ -584,10 +584,12 @@ class DNSplatterPipeline(VanillaPipeline):
                     eval_dataset=eval_dataset,
                     model=model,
                     render_output_path=render_output_path,
-                    mushroom=True
-                    if self.datamanager.dataparser.__class__.__name__
-                    == "MushroomDataParser"
-                    else False,
+                    mushroom=(
+                        True
+                        if self.datamanager.dataparser.__class__.__name__
+                        == "MushroomDataParser"
+                        else False
+                    ),
                     save_train_images=self.config.save_train_images,
                 )
             else:
@@ -614,10 +616,12 @@ class DNSplatterPipeline(VanillaPipeline):
                     eval_dataset=eval_dataset,
                     model=model,
                     render_output_path=render_output_path,
-                    mushroom=True
-                    if self.datamanager.dataparser.__class__.__name__
-                    == "MushroomDataParser"
-                    else False,
+                    mushroom=(
+                        True
+                        if self.datamanager.dataparser.__class__.__name__
+                        == "MushroomDataParser"
+                        else False
+                    ),
                     save_train_images=self.config.save_train_images,
                 )
 

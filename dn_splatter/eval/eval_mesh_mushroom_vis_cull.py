@@ -627,6 +627,7 @@ def main(
     transform_path: Optional[Path] = None,  # assume nerfacto style mesh as input
     meta_data_path: Optional[Path] = None,  # assume neusfacto style mesh as input
     output_same_as_pred_mesh: Optional[bool] = True,
+    rename_output_file: Optional[str] = None,
 ):
     """Evaluate mushroom dataset meshes
 
@@ -731,13 +732,18 @@ def main(
     if output_same_as_pred_mesh:
         output = pred_mesh_path.parent
 
+    # gt_mesh.export(str(output / "gt_mesh_cull.ply"))
     pred_mesh.export(str(output / "mesh_cull.ply"))
     # evaluate culled mesh
     print("finished save and cut the mesh")
 
     rst = compute_metrics(pred_mesh, gt_mesh)
-    print(f"Saving results to: {output / 'mesh_metrics.json'}")
-    json.dump(rst, open(output / "mesh_metrics.json", "w"))
+    if rename_output_file is None:
+        print(f"Saving results to: {output / 'mesh_metrics.json'}")
+        json.dump(rst, open(output / "mesh_metrics.json", "w"))
+    else:
+        print(f"Saving results to: {output / Path(rename_output_file)}")
+        json.dump(rst, open(output / Path(rename_output_file), "w"))
 
 
 if __name__ == "__main__":

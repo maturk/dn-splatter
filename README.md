@@ -90,12 +90,12 @@ This repo registers a new model called `dn-splatter` with various additional opt
 | --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
 | --pipeline.model.sensor-depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
 | --pipeline.model.mono-depth-lambda (Float 0.2 recommended) | Regularizer weight for mono depth supervision |
-| --pipeline.model.use-depth-smooth-loss (True/False) | Add smoothness prior on rendered depths|
 | --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
+| --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
 | --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
-| --pipeline.model.use-sparse-loss (True/False) | Encourages sparsity in opacities |
-| --pipeline.model.use-binary-opacities (True/False) | Binary thresholding for opacities (good for object centric meshing)|
+| --pipeline.model.two-d-gaussians (True/False)| Encourage 2D gaussians |
 
+Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
 ## Recommended settings:
 For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
@@ -103,38 +103,34 @@ For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ dat
 ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-depth-loss True \
                  --pipeline.model.sensor-depth-lambda 0.2 \
-                 --pipeline.model.use-depth-smooth-loss True \
                  --pipeline.model.use-normal-loss True \
+                 --pipeline.model.use-normal-tv-loss True \
                  --pipeline.model.normal-supervision (mono/depth) \
-```
-
-For small scale object centric captures, the following works okay for meshing:
-```bash
-ns-train dn-splatter --data PATH_TO_DATA \
-                 --pipeline.model.use-depth-smooth-loss True \
-                 --pipeline.model.use-sparse-loss True \
-                 --pipeline.model.use-binary-opacities True \
 ```
 
 ### dn-splatter-big:
 We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
 
+### Supported Depth Losses
+We support various depth losses. For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
+
+To train with a specific loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
+
 ## Mesh
 To extract a mesh, run the following command:
 ```bash
-gs-mesh {dn, tsdf, sugar-coarse, gaussians, marching, o3dtsdf} --load-config [PATH] --output-dir [PATH]
+gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
 ```
-We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh tsdf` for smaller object scale captures.
-Using `gs-mesh o3dtsdf` to extract with tsdf implementation from open3d to get texture mesh.
+We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh o3dtsdf` for smaller object scale captures.
 
 Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
 | gs-mesh |  Description | Requires normals?|
 |--------------------|--------------------------------------------------------------------|-|
 | gs-mesh dn         | Backproject depth and normal maps to Poisson                       | Yes|
 | gs-mesh tsdf       | TSDF Fusion algorithm                                              | No|
+| gs-mesh o3dtsdf    | TSDF Fusion algorithm used in 2DGS paper                           | No|
 | gs-mesh sugar-coarse | Level set extractor from SuGaR (Sec 4.2 from the paper)          | Both |
 | gs-mesh gaussians  | Use Gaussian xyzs and normals to Poisson                           | Yes|
-| gs-mesh marching   | Marching cubes algorithm hacked for 3DGS (TODO: needs some fixes)  | No|
 
 Use the `--help` command with each method to see more useful options and settings.
 
@@ -254,8 +250,8 @@ To train with the custom data:
 ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-depth-loss True \
                  --pipeline.model.sensor-depth-lambda 0.2 \
-                 --pipeline.model.use-depth-smooth-loss True \
                  --pipeline.model.use-normal-loss True \
+                 --pipeline.model.use-normal-tv-loss True \
                  --pipeline.model.normal-supervision depth \
 ```
 
@@ -316,7 +312,6 @@ Use the `mushroom` dataparser as follows:
 ns-train dn-splatter \
 --pipeline.model.use-depth-loss True \
 --pipeline.model.sensor-depth-lambda 0.2 \
---pipeline.model.use-depth-smooth-loss True \
 --pipeline.model.use-normal-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode [kinect/iphone]
@@ -328,8 +323,8 @@ python dn_splatter/scripts/poses_to_colmap_sfm.py --transforms_path [path/transf
 ns-train dn-splatter \
 --pipeline.model.use-depth-loss True \
 --pipeline.model.sensor-depth-lambda 0.2 \
---pipeline.model.use-depth-smooth-loss True \
 --pipeline.model.use-normal-loss True \
+--pipeline.model.use-normal-tv-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode iphone --create_pc_from_colmap True
 ```
@@ -342,8 +337,8 @@ Use the `replica` dataparser as follows:
 ns-train dn-splatter 
 --pipeline.model.use-depth-loss True \
 --pipeline.model.sensor-depth-lambda 0.5 \
---pipeline.model.use-depth-smooth-loss True \
 --pipeline.model.use-normal-loss True \
+--pipeline.model.use-normal-tv-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 replica --data [DATASET_PATH] --sequence [office0/office1/office2/office3/office4/room0/room1/room2] 
 ```

@@ -3,7 +3,6 @@
 import abc
 from enum import Enum
 from typing import Literal, Optional
-import math
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +11,7 @@ from torchmetrics.image import (
     MultiScaleStructuralSimilarityIndexMeasure,
     StructuralSimilarityIndexMeasure,
 )
+from dn_splatter.metrics import mean_angular_error
 
 from nerfstudio.field_components.field_heads import FieldHeadNames
 
@@ -346,6 +346,35 @@ class SensorDepthLoss(nn.Module):
             torch.mean(((z_vals + pred_sdf) - depth_gt) ** 2 * sdf_mask) * sdf_weight
         )
         return l1_loss, free_space_loss, sdf_loss
+
+
+class NormalLossType(Enum):
+    """Enum for specifying depth loss"""
+
+    L1 = "L1"
+    Smooth = "Smooth"
+
+
+class NormalLoss(nn.Module):
+    """Factory method class for various depth losses"""
+
+    def __init__(self, normal_loss_type: NormalLossType, **kwargs):
+        super().__init__()
+        self.normal_loss_type = normal_loss_type
+        self.kwargs = kwargs
+        self.loss = self._get_loss_instance()
+
+    @abc.abstractmethod
+    def forward(self, *args) -> Tensor:
+        return self.loss(*args)
+
+    def _get_loss_instance(self) -> nn.Module:
+        if self.normal_loss_type == NormalLossType.L1:
+            return L1(**self.kwargs)
+        elif self.normal_loss_type == NormalLossType.Smooth:
+            return TVLoss(**self.kwargs)
+        else:
+            raise ValueError(f"Unsupported loss type: {self.normal_loss_type}")
 
 
 # pearson depth loss, adapted from https://github.com/ForMyCat/SparseGS/blob/95e7aef29c5562400d3b2b38cc7e90436a432b7c/utils/loss_utils.py#L80

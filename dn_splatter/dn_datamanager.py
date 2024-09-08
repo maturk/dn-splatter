@@ -68,6 +68,7 @@ class DNSplatterDataManager(FullImageDatamanager):
         )
 
         self.load_normals = True if ("normal_filenames" in metadata) else False
+        self.load_confidence = True if ("confidence_filenames" in metadata) else False
         self.image_idx = 0
 
     def create_train_dataset(self) -> InputDataset:
@@ -128,7 +129,15 @@ class DNSplatterDataManager(FullImageDatamanager):
                     data["image"].shape[:2],
                     antialias=None,
                 ).permute(1, 2, 0)
-
+        if self.load_confidence:
+            assert "confidence" in data
+            data["confidence"] = data["confidence"].to(self.device)
+            if data["confidence"].shape != data["image"].shape:
+                data["confidence"] = TF.resize(
+                    data["confidence"].permute(2, 0, 1),
+                    data["image"].shape[:2],
+                    antialias=None,
+                ).permute(1, 2, 0)
         assert (
             len(self.train_dataset.cameras.shape) == 1
         ), "Assumes single batch dimension"
@@ -183,7 +192,15 @@ class DNSplatterDataManager(FullImageDatamanager):
                     data["image"].shape[:2],
                     antialias=None,
                 ).permute(1, 2, 0)
-
+        if self.load_confidence:
+            assert "confidence" in data
+            data["confidence"] = data["confidence"].to(self.device)
+            if data["confidence"].shape != data["image"].shape:
+                data["confidence"] = TF.resize(
+                    data["confidence"].permute(2, 0, 1),
+                    data["image"].shape[:2],
+                    antialias=None,
+                ).permute(1, 2, 0)
         assert (
             len(self.eval_dataset.cameras.shape) == 1
         ), "Assumes single batch dimension"

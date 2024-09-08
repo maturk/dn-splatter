@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from dn_splatter.data.dn_dataset import GDataset
 from dn_splatter.dn_pipeline import DNSplatterPipelineConfig
-from dn_splatter.eval.g_depthnerfacto import GDepthNerfactoModelConfig
-from dn_splatter.eval.g_nerfacto import GNerfactoModelConfig
-from dn_splatter.eval.g_neusfacto import DNeuSFactoModelConfig
+from dn_splatter.eval.baseline_models.g_depthnerfacto import GDepthNerfactoModelConfig
+from dn_splatter.eval.baseline_models.g_nerfacto import GNerfactoModelConfig
+from dn_splatter.eval.baseline_models.g_neusfacto import DNeuSFactoModelConfig
 from nerfstudio.cameras.camera_optimizers import CameraOptimizerConfig
 from nerfstudio.configs.base_config import ViewerConfig
 from nerfstudio.data.datamanagers.base_datamanager import (

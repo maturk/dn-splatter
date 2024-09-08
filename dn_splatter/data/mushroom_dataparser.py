@@ -28,6 +28,7 @@ from dn_splatter.data.mushroom_utils.reference_depth_download import (
     download_reference_depth,
 )
 from dn_splatter.scripts.depth_from_pretrain import depth_from_pretrain
+from dn_splatter.scripts.depth_to_normal import DepthToNormal
 from dn_splatter.scripts.normals_from_pretrain import (
     NormalsFromPretrained,
     normals_from_depths,
@@ -81,6 +82,8 @@ class MushroomDataParserConfig(DataParserConfig):
     """Whether input depth maps are Euclidean distances (or z-distances)."""
     load_depths: bool = True
     """Whether to load depth maps"""
+    load_depth_confidence_masks: bool = False
+    """Whether to load depth confidence masks"""
     load_normals: bool = True
     """Set to true to load normal maps"""
     normal_format: Literal["opencv", "opengl"] = "opengl"
@@ -91,6 +94,8 @@ class MushroomDataParserConfig(DataParserConfig):
     """Whether to load pcd normals for normal initialisation"""
     create_pc_from_colmap: bool = False
     """Whether to create pointclouds from colmap for the mushroom data."""
+    num_init_points: int = 1_000_000
+    """Number of points in initial seed pointcloud. Does not apply to Colmap generated points."""
 
     # general configs
     downscale_factor: Optional[int] = None
@@ -172,10 +177,21 @@ class MushroomDataParser(DataParser):
             inds = np.argsort([int(fname.stem) for fname in short_fnames])
         short_frames = [short_meta["frames"][ind] for ind in inds]
 
+        if self.config.load_depth_confidence_masks:
+            long_data_dir = self.config.data / self.config.mode / "long_capture"
+            short_data_dir = self.config.data / self.config.mode / "short_capture"
+            if not (long_data_dir / "depth_normals_mask").exists():
+                CONSOLE.log(
+                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(long_data_dir / 'depth_normals_mask')}"
+                )
+                DepthToNormal(data_dir=long_data_dir).main()
+            if not (short_data_dir / "depth_normals_mask").exists():
+                CONSOLE.log(
+                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(short_data_dir / 'depth_normals_mask')}"
+                )
+                DepthToNormal(data_dir=short_data_dir).main()
         (
-            long_filenames,
-            long_mask_filenames,
-            long_depth_filenames,
+            return_long_filenames,
             long_poses,
             long_fx,
             long_fy,
@@ -195,11 +211,10 @@ class MushroomDataParser(DataParser):
             width_fixed,
             distort_fixed,
             self.config.use_faro_scanner_depths,
+            self.config.load_depth_confidence_masks,
         )
         (
-            short_filenames,
-            short_mask_filenames,
-            short_depth_filenames,
+            return_short_filenames,
             short_poses,
             short_fx,
             short_fy,
@@ -219,11 +234,25 @@ class MushroomDataParser(DataParser):
             width_fixed,
             distort_fixed,
             self.config.use_faro_scanner_depths,
+            self.config.load_depth_confidence_masks,
         )
+        long_filenames = return_long_filenames["image"]
+        short_filenames = return_short_filenames["image"]
+        long_depth_filenames = return_long_filenames["depth"]
+        short_depth_filenames = return_short_filenames["depth"]
+        long_mask_filenames = return_long_filenames["mask"]
+        short_mask_filenames = return_short_filenames["mask"]
 
         image_filenames = long_filenames + short_filenames
         mask_filenames = long_mask_filenames + short_mask_filenames
         depth_filenames = long_depth_filenames + short_depth_filenames
+        if self.config.load_depth_confidence_masks:
+            confidence_filenames = (
+                return_long_filenames["confidence"]
+                + return_short_filenames["confidence"]
+            )
+        else:
+            confidence_filenames = []
         poses = long_poses + short_poses
         fx = long_fx + short_fx
         fy = long_fy + short_fy
@@ -248,6 +277,9 @@ class MushroomDataParser(DataParser):
         Different number of image and depth filenames.
         You should check that depth_file_path is specified for every frame (or zero frames) in transforms.json.
         """
+        assert len(confidence_filenames) == 0 or (
+            len(confidence_filenames) == len(image_filenames)
+        )
 
         # Mushroom eval images
         eval_image_txt_path = Path(long_data_dir / "test.txt")
@@ -335,6 +367,13 @@ class MushroomDataParser(DataParser):
         depth_filenames = (
             [depth_filenames[i] for i in indices] if len(depth_filenames) > 0 else []
         )
+
+        if self.config.load_depth_confidence_masks:
+            confidence_filenames = (
+                [confidence_filenames[i] for i in indices]
+                if len(confidence_filenames) > 0
+                else []
+            )
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
@@ -431,78 +470,111 @@ class MushroomDataParser(DataParser):
         # transform_matrix = torch.cat([transform_matrix, torch.zeros(3, 1)], dim=1)
 
         metadata = {}
-        if self.config.use_faro_scanner_pd:
-            metadata.update(
-                self._load_faro_scanner_point_data(
-                    self.config.data, transform_matrix, scale_factor, self.config.mode
-                )
-            )
-        else:
-            if self.config.mode == "iphone":
-                if not self.config.create_pc_from_colmap:
-                    # create pointcloud from depth
-                    iphone_ply_file_path = long_data_dir / self.config.iphone_ply_name
-                    if not iphone_ply_file_path.exists():
-                        CONSOLE.log(
-                            f"[bold yellow] could not find polycam pointcloud path {iphone_ply_file_path}. Trying to reconstruct it from available data..."
-                        )
-                        generate_iPhone_pointcloud_within_sequence(long_data_dir)
 
-                else:
-                    # create pointcloud from colmap sfm
-                    from nerfstudio.process_data.colmap_utils import (
-                        create_ply_from_colmap,
-                    )
-
-                    ply_filename = "sparse_pc.ply"
-                    applied_transform = np.eye(4)[:3, :]
-                    applied_transform = applied_transform[np.array([0, 2, 1]), :]
-                    applied_transform[2, :] *= -1
-                    create_ply_from_colmap(
-                        filename=ply_filename,
-                        recon_dir=long_data_dir / "sparse/0",
-                        output_dir=long_data_dir,
-                        applied_transform=torch.tensor(
-                            applied_transform,
-                            dtype=torch.float32,
-                        ),
-                    )
-                    iphone_ply_file_path = long_data_dir / ply_filename
-                # load iphone point data
+        if split == "train":
+            if self.config.use_faro_scanner_pd:
                 metadata.update(
-                    self._load_3D_points(
-                        iphone_ply_file_path, transform_matrix, scale_factor
+                    self._load_faro_scanner_point_data(
+                        self.config.data,
+                        transform_matrix,
+                        scale_factor,
+                        self.config.mode,
                     )
                 )
             else:
-                kinect_pointcloud_path = long_data_dir / self.config.kinect_ply_path
-                if not kinect_pointcloud_path.exists():
-                    CONSOLE.log(
-                        f"[bold yellow] could not find kinect pointcloud path {kinect_pointcloud_path}. Trying to reconstruct it from available data..."
-                    )
-                    PointCloud_path = long_data_dir / "PointCloud"
-                    if PointCloud_path.exists():
-                        generate_kinect_pointcloud_within_sequence(long_data_dir)
-                    else:
-                        CONSOLE.log(
-                            "[bold red] could not find pointcloud data. Exiting..."
+                if self.config.mode == "iphone":
+                    # load iphone polycam point data
+                    if not self.config.create_pc_from_colmap:
+                        iphone_ply_file_path = (
+                            long_data_dir / self.config.iphone_ply_name
                         )
-                        quit()
-                # load kinect point data
+                        if not iphone_ply_file_path.exists():
+                            CONSOLE.log(
+                                f"[bold yellow] could not find polycam pointcloud path {iphone_ply_file_path}. Trying to reconstruct it from available data..."
+                            )
+                            generate_iPhone_pointcloud_within_sequence(long_data_dir)
+
+                    else:
+                        from nerfstudio.process_data.colmap_utils import (
+                            create_ply_from_colmap,
+                        )
+
+                        ply_filename = "sparse_pc.ply"
+                        applied_transform = np.eye(4)[:3, :]
+                        applied_transform = applied_transform[np.array([0, 2, 1]), :]
+                        applied_transform[2, :] *= -1
+                        create_ply_from_colmap(
+                            filename=ply_filename,
+                            recon_dir=long_data_dir / "sparse/0",
+                            output_dir=long_data_dir,
+                            applied_transform=torch.tensor(
+                                applied_transform,
+                                dtype=torch.float32,
+                            ),
+                        )
+                        iphone_ply_file_path = long_data_dir / ply_filename
+                    # load iphone point data
+                    metadata.update(
+                        self._load_3D_points(
+                            iphone_ply_file_path, transform_matrix, scale_factor
+                        )
+                    )
+                    if metadata["points3D_xyz"].shape[0] != self.config.num_init_points:
+                        CONSOLE.log(
+                            f"[bold yellow] Found pointcloud with {metadata['points3D_xyz'].shape[0]} number of points, regenerating with with {self.config.num_init_points} points..."
+                        )
+                        generate_iPhone_pointcloud_within_sequence(
+                            long_data_dir, num_points=self.config.num_init_points
+                        )
+
+                        metadata.update(
+                            self._load_3D_points(
+                                iphone_ply_file_path, transform_matrix, scale_factor
+                            )
+                        )
+
+                else:
+                    kinect_pointcloud_path = long_data_dir / self.config.kinect_ply_path
+                    if not kinect_pointcloud_path.exists():
+                        CONSOLE.log(
+                            f"[bold yellow] could not find kinect pointcloud path {kinect_pointcloud_path}. Trying to reconstruct it from available data..."
+                        )
+                        PointCloud_path = long_data_dir / "PointCloud"
+                        if PointCloud_path.exists():
+                            generate_kinect_pointcloud_within_sequence(long_data_dir)
+                        else:
+                            CONSOLE.log(
+                                "[bold red] could not find pointcloud data. Exiting..."
+                            )
+                            quit()
+                    # load kinect point data
+                    metadata.update(
+                        self._load_3D_points(
+                            kinect_pointcloud_path, transform_matrix, scale_factor
+                        )
+                    )
+                    if metadata["points3D_xyz"].shape[0] != self.config.num_init_points:
+                        CONSOLE.log(
+                            f"[bold yellow] Found pointcloud with {metadata['points3D_xyz'].shape[0]} number of points, regenerating with with {self.config.num_init_points} points..."
+                        )
+                        generate_kinect_pointcloud_within_sequence(
+                            long_data_dir, num_points=self.config.num_init_points
+                        )
+
+                        metadata.update(
+                            self._load_3D_points(
+                                iphone_ply_file_path, transform_matrix, scale_factor
+                            )
+                        )
+
+            if self.config.load_pcd_normals:
                 metadata.update(
-                    self._load_3D_points(
-                        kinect_pointcloud_path, transform_matrix, scale_factor
+                    self._load_points3D_normals(
+                        points=metadata["points3D_xyz"],
+                        colors=metadata["points3D_rgb"],
+                        transform_matrix=transform_matrix,
                     )
                 )
-
-        if self.config.load_pcd_normals:
-            metadata.update(
-                self._load_points3D_normals(
-                    points=metadata["points3D_xyz"],
-                    colors=metadata["points3D_rgb"],
-                    transform_matrix=transform_matrix,
-                )
-            )
 
         # process depths
         if self.config.depth_mode == "all" or self.config.depth_mode == "mono":
@@ -560,7 +632,6 @@ class MushroomDataParser(DataParser):
                     )
                 }
             )
-
         if self.config.depth_mode == "all" or self.config.depth_mode == "sensor":
             metadata.update(
                 {
@@ -654,6 +725,11 @@ class MushroomDataParser(DataParser):
 
         metadata.update({"load_normals": self.config.load_normals})
 
+        metadata.update({"load_confidence": self.config.load_depth_confidence_masks})
+
+        if self.config.load_depth_confidence_masks:
+            metadata.update({"confidence_filenames": confidence_filenames})
+
         self.scale_factor = scale_factor
         self.transform_matrix = transform_matrix
 
@@ -712,7 +788,6 @@ class MushroomDataParser(DataParser):
         """load pointcloud from ply file"""
         pcd = o3d.io.read_point_cloud(str(ply_file_path))
         points3D = torch.from_numpy(np.asarray(pcd.points, dtype=np.float32))
-
         points3D = (
             torch.cat((points3D, torch.ones_like(points3D[..., :1])), -1)
             @ transform_matrix.T
@@ -861,6 +936,7 @@ class MushroomDataParser(DataParser):
         width_fixed,
         distort_fixed,
         use_faro_scanner_depths,
+        load_depth_confidence_masks,
     ):
         fx = []
         fy = []
@@ -874,6 +950,8 @@ class MushroomDataParser(DataParser):
         mask_filenames = []
         depth_filenames = []
         poses = []
+        if load_depth_confidence_masks:
+            confidence_filenames = []
 
         for frame in frames:
             filepath = Path(frame["file_path"])
@@ -929,11 +1007,35 @@ class MushroomDataParser(DataParser):
                     depth_filepath, data_dir, downsample_folder_prefix="depths_"
                 )
                 depth_filenames.append(depth_fname)
+            if load_depth_confidence_masks:
+                confidence_filepath = Path(
+                    frame["depth_file_path"]
+                    .replace("depth", "depth_normals_mask")
+                    .replace("png", "jpg")
+                )
+                confidence_fname = self._get_fname(
+                    confidence_filepath,
+                    data_dir,
+                    downsample_folder_prefix="confidence_",
+                )
+                confidence_filenames.append(confidence_fname)
+
+        if load_depth_confidence_masks:
+            return_filenames = {
+                "image": image_filenames,
+                "mask": mask_filenames,
+                "depth": depth_filenames,
+                "confidence": confidence_filenames,
+            }
+        else:
+            return_filenames = {
+                "image": image_filenames,
+                "mask": mask_filenames,
+                "depth": depth_filenames,
+            }
 
         return (
-            image_filenames,
-            mask_filenames,
-            depth_filenames,
+            return_filenames,
             poses,
             fx,
             fy,

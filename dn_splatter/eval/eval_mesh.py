@@ -11,6 +11,7 @@ import trimesh
 import tyro
 from matplotlib import pyplot as plt
 from scipy.spatial import cKDTree
+import json
 
 transform = np.array(
     [

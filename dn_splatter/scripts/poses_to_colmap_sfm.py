@@ -12,7 +12,7 @@ from nerfstudio.data.utils.colmap_parsing_utils import rotmat2qvec
 class PosesToColmap:
     def __init__(
         self,
-        transforms_path: str = "datasets/room_datasets/vr_room/iphone/long_capture/transformations_colmap.json",
+        transforms_path: str,
         run_colmap: bool = False,
         assume_colmap_world_coordinate_convention: bool = True,
     ):
@@ -42,7 +42,6 @@ class PosesToColmap:
         
         """
         output_db = self.base_dir / "database.db"
-        print("output db: ", output_db)
         use_gpu = 1 if self.use_gpu else 0
 
         feature_cmd = (
@@ -60,7 +59,6 @@ class PosesToColmap:
             str(use_gpu),
         )
         feature_cmd = (" ").join(feature_cmd)
-        print(feature_cmd)
         os.system(feature_cmd)
 
         match_cmd = (
@@ -70,7 +68,6 @@ class PosesToColmap:
             str(output_db),
         )
         match_cmd = (" ").join(match_cmd)
-        print(match_cmd)
         os.system(match_cmd)
 
         triangulate_cmd = (
@@ -86,7 +83,6 @@ class PosesToColmap:
             str(self.sparse_dir),
         )
         triangulate_cmd = (" ").join(triangulate_cmd)
-        print(triangulate_cmd)
         os.system(triangulate_cmd)
 
     def manual_sparse(self):
@@ -106,7 +102,6 @@ class PosesToColmap:
 
         camera_model = data["camera_model"]
 
-        assert data["fl_x"]
         fx = data["fl_x"]
         fy = data["fl_y"]
         cx = data["cx"]

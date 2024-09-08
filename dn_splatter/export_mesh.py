@@ -370,7 +370,7 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
                 if self.normal_method == "normal_maps":
                     # normals to OPENGL
                     assert "normal" in outputs
-                    normal_map = outputs["normal"]
+                    normal_map = outputs["surface_normal"]
                     h, w, _ = normal_map.shape
                     normal_map = normal_map.view(-1, 3)
                     normal_map = 2 * normal_map - 1
@@ -418,7 +418,7 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
                     normal_map = normals / normals.norm(dim=-1, keepdim=True)
                     normal_map = (normal_map + 1) / 2
 
-                    normal_map = outputs["normal"].cpu()
+                    normal_map = outputs["surface_normal"].cpu()
                     normal_map = normal_map.view(-1, 3)[indices]
 
                 points.append(xyzs)
@@ -745,9 +745,9 @@ class TSDFFusion(GSMeshExporter):
     Backproject depths and run TSDF fusion
     """
 
-    voxel_size: float = 0.02
+    voxel_size: float = 0.01
     """tsdf voxel size"""
-    sdf_truc: float = 0.08
+    sdf_truc: float = 0.03
     """TSDF truncation"""
     total_points: int = 2_000_000
     """Total target surface samples"""
@@ -809,7 +809,7 @@ class TSDFFusion(GSMeshExporter):
                     cy=camera.cy.item(),  # type: ignore
                     img_size=(W, H),
                     c2w=c2w,
-                    mask=indices,
+                    # mask=indices,
                 )
                 # xyzs = xyzs[mask.view(-1,1)[...,0]]
                 points.append(xyzs)
@@ -852,7 +852,7 @@ class Open3DTSDFFusion(GSMeshExporter):
     """tsdf voxel size"""
     sdf_truc: float = 0.03
     """TSDF truncation"""
-    depth_trunc: float = 4
+    depth_trunc: float = 20
 
     def main(self):
         import open3d as o3d
@@ -978,7 +978,8 @@ def entrypoint():
 
 if __name__ == "__main__":
     # tyro.cli(GaussiansToPoisson).main()
-    tyro.cli(DepthAndNormalMapsPoisson).main()
+    # tyro.cli(DepthAndNormalMapsPoisson).main()
     # tyro.cli(LevelSetExtractor).main()
     # tyro.cli(MarchingCubesMesh).main()
     # tyro.cli(TSDFFusion).main()
+    tyro.cli(Open3DTSDFFusion).main()
