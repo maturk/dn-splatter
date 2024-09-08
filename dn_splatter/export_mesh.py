@@ -249,9 +249,10 @@ class GaussiansToPoisson(GSMeshExporter):
                 pcd = pcd.voxel_down_sample(voxel_size=self.down_sample_voxel)
 
             if self.outlier_removal:
-                pcd.remove_statistical_outlier(
+                cl, ind = pcd.remove_statistical_outlier(
                     nb_neighbors=20, std_ratio=self.std_ratio
                 )
+                pcd = pcd.select_by_index(ind)
 
             CONSOLE.print("Computing Mesh... this may take a while.")
             mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
@@ -437,6 +438,13 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
             pcd.points = o3d.utility.Vector3dVector(points)
             pcd.normals = o3d.utility.Vector3dVector(normals)
             pcd.colors = o3d.utility.Vector3dVector(colors)
+
+            if self.outlier_removal:
+                cl, ind = pcd.remove_statistical_outlier(
+                    nb_neighbors=20, std_ratio=self.std_ratio
+                )
+                pcd = pcd.select_by_index(ind)
+
             o3d.io.write_point_cloud(
                 str(self.output_dir / "DepthAndNormalMapsPoisson_pcd.ply"), pcd
             )
