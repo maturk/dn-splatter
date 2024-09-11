@@ -78,6 +78,8 @@ def generate_kinect_pointcloud_within_sequence(
     cloud.points = points
     cloud.colors = colors
     cloud.normals = normals
+    if os.path.exists(os.path.join(data_path, "kinect_pointcloud.ply")):
+        os.remove(os.path.join(data_path, "kinect_pointcloud.ply"))
     o3d.io.write_point_cloud(os.path.join(data_path, "kinect_pointcloud.ply"), cloud)
 
 
@@ -175,10 +177,19 @@ def generate_iPhone_pointcloud_within_sequence(
 
     points = np.vstack(points_list)
     colors = np.vstack(colors_list)
+
+    if points.shape[0] > num_points:
+        # ensure final num points is exact
+        indices = np.random.choice(points.shape[0], size=num_points, replace=False)
+        points = points[indices]
+        colors = colors[indices]
+
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     pcd.colors = o3d.utility.Vector3dVector(colors)
 
+    if os.path.exists(os.path.join(data_path, "iphone_pointcloud.ply")):
+        os.remove(os.path.join(data_path, "iphone_pointcloud.ply"))
     o3d.io.write_point_cloud(os.path.join(data_path, "iphone_pointcloud.ply"), pcd)
 
 
@@ -265,6 +276,13 @@ def generate_polycam_pointcloud(data_path: Path, num_points: int = 1_000_000):
 
     points = np.vstack(points_list)
     colors = np.vstack(colors_list)
+
+    if points.shape[0] > num_points:
+        # ensure final num points is exact
+        indices = np.random.choice(points.shape[0], size=num_points, replace=False)
+        points = points[indices]
+        colors = colors[indices]
+
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points)
     pcd.colors = o3d.utility.Vector3dVector(colors)

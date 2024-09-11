@@ -145,7 +145,7 @@ def save_img(image, image_path, verbose=True) -> None:
         Path(os.path.dirname(image_path)).mkdir(parents=True)
     im = Image.fromarray(image)
     if verbose:
-        print("saving to: ", image_path)
+        print("saving to: ", os.getcwd() + "/" + image_path)
     im.save(image_path)
 
 
@@ -376,10 +376,11 @@ def gs_render_dataset_images(
             else:
                 image_name = Path(eval_dataset.image_filenames[image_idx]).stem
             outputs = model.get_outputs(camera)
-            rgb_out, depth_out, normal_out = (
+            rgb_out, depth_out, normal_out, surface_normal = (
                 outputs["rgb"],
                 outputs["depth"],
                 outputs["normal"],
+                outputs["surface_normal"],
             )
 
             depth_color = colormaps.apply_depth_colormap(depth_out)
@@ -392,7 +393,7 @@ def gs_render_dataset_images(
                 depth_gt,
                 depth,
                 normal_gt if normal_gt is not None else None,
-                normal_out if normal_out is not None else None,
+                surface_normal if surface_normal is not None else None,
                 render_output_path,
                 image_name,
             )
@@ -419,10 +420,11 @@ def gs_render_dataset_images(
             else:
                 image_name = Path(train_dataset.image_filenames[image_idx]).stem
             outputs = model.get_outputs(camera)
-            rgb_out, depth_out, normal_out = (
+            rgb_out, depth_out, normal_out, surface_normal = (
                 outputs["rgb"],
                 outputs["depth"],
                 outputs["normal"],
+                outputs["surface_normal"],
             )
 
             depth_color = colormaps.apply_depth_colormap(depth_out)
@@ -435,7 +437,7 @@ def gs_render_dataset_images(
                 depth_gt,
                 depth,
                 normal_gt if normal_gt is not None else None,
-                normal_out if normal_out is not None else None,
+                surface_normal if surface_normal is not None else None,
                 render_output_path,
                 image_name,
             )
@@ -488,10 +490,11 @@ def ns_render_dataset_images(
             else:
                 image_name = Path(eval_dataset.image_filenames[image_idx]).stem
 
-            rgb_out, depth_out, normal_out = (
+            rgb_out, depth_out, normal_out, surface_normal = (
                 outputs["rgb"],
                 outputs["depth"],
                 outputs["normal"] if "normal" in outputs else None,
+                outputs["surface_normal"] if "surface_normal" in outputs else None,
             )
             depth_color = colormaps.apply_depth_colormap(depth_out)
             depth = depth_out.detach().cpu().numpy()
@@ -503,7 +506,7 @@ def ns_render_dataset_images(
                 depth_gt,
                 depth,
                 normal_gt,
-                normal_out,
+                surface_normal,
                 render_output_path,
                 image_name,
             )

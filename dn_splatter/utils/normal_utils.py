@@ -1,7 +1,9 @@
 """Utils for normals"""
+
 import torch
 from dn_splatter.utils.camera_utils import get_means3d_backproj
 from torch import Tensor
+import math
 
 
 def pcd_to_normal(xyz: Tensor):

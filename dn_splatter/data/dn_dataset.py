@@ -42,6 +42,11 @@ class GDataset(InputDataset):
         else:
             self.load_normals = False
 
+        if "load_confidence" in self.metadata:
+            self.load_confidence = self.metadata["load_confidence"]
+        else:
+            self.load_confidence = False
+
         if "depth_mode" in self.metadata:
             self.depth_mode = self.metadata["depth_mode"]
             assert self.depth_mode in ["sensor", "mono", "all", "none"]
@@ -107,10 +112,15 @@ class GDataset(InputDataset):
             assert "normal_filenames" in self.metadata
             self.normal_filenames = self.metadata["normal_filenames"]
 
+        if self.load_confidence:
+            assert "confidence_filenames" in self.metadata
+            self.confidence_filenames = self.metadata["confidence_filenames"]
+
     def get_metadata(self, data: Dict) -> Dict:
         metadata = {}
         depth_data = {}
         normal_data = {}
+        confidence_data = {}
         if self.load_depths:
             # try to load depth data
             height = int(self._dataparser_outputs.cameras.height[data["image_idx"]])
@@ -167,8 +177,20 @@ class GDataset(InputDataset):
                 c2w=camtoworld,
             )
             normal_data.update({"normal": normal_image})
+
+        if self.load_confidence:
+            assert self.confidence_filenames is not None
+            filepath = self.confidence_filenames[data["image_idx"]]
+            confidence_image = get_depth_image_from_path(
+                filepath=Path(filepath),
+                height=height,
+                width=width,
+                scale_factor=1.0,
+            )
+            confidence_data.update({"confidence": confidence_image})
         metadata.update(depth_data)
         metadata.update(normal_data)
+        metadata.update(confidence_data)
         return metadata
 
     def _find_transform(self, image_path: Path) -> Union[Path, None]:

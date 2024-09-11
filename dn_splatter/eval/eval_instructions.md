@@ -9,6 +9,9 @@ In this document we briefly describe the evaluation protocol and methods used in
 We include models for evaluating rgb, depth and/or mesh metrics using various method.
 The following methods are supported.
 
+Please install PyTorch3D for mesh evaluation: 
+```pip install "git+https://github.com/facebookresearch/pytorch3d.git"```
+
 ### Mesh Metrics
 
 We report the following metrics

@@ -331,7 +331,7 @@ def get_grid_culling_pattern(
     depth_gt_list=None,
     remove_missing_depth=True,
     remove_occlusion=True,
-    verbose=False,
+    verbose=True,
 ):
 
     obs_mask = np.zeros(points.shape[0])
@@ -627,6 +627,7 @@ def main(
     transform_path: Optional[Path] = None,  # assume nerfacto style mesh as input
     meta_data_path: Optional[Path] = None,  # assume neusfacto style mesh as input
     output_same_as_pred_mesh: Optional[bool] = True,
+    rename_output_file: Optional[str] = None,
 ):
     """Evaluate mushroom dataset meshes
 
@@ -680,7 +681,7 @@ def main(
         initial_transformation = np.array(
             json.load(open(gt_mesh_path / "icp_kinect.json"))["gt_transformation"]
         ).reshape(4, 4)
-        pred_mesh = pred_mesh.apply_transform(initial_transformation)
+        gt_mesh = gt_mesh.apply_transform(np.linalg.inv(initial_transformation))
 
     pred_mesh = open3d_mesh_from_trimesh(pred_mesh)
     gt_mesh = open3d_mesh_from_trimesh(gt_mesh)
@@ -737,8 +738,12 @@ def main(
     print("finished save and cut the mesh")
 
     rst = compute_metrics(pred_mesh, gt_mesh)
-    print(f"Saving results to: {output / 'mesh_metrics.json'}")
-    json.dump(rst, open(output / "mesh_metrics.json", "w"))
+    if rename_output_file is None:
+        print(f"Saving results to: {output / 'mesh_metrics.json'}")
+        json.dump(rst, open(output / "mesh_metrics.json", "w"))
+    else:
+        print(f"Saving results to: {output / Path(rename_output_file)}")
+        json.dump(rst, open(output / Path(rename_output_file), "w"))
 
 
 if __name__ == "__main__":

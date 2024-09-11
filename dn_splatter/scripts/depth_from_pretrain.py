@@ -10,6 +10,7 @@ Run with:
 
 TODO: currently assumes depth and images are equal sizes. This might be a problem for some datasets
 """
+
 import json
 import os
 from dataclasses import dataclass

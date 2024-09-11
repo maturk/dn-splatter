@@ -4,7 +4,6 @@ Depth + normal splatter
 
 import math
 import random
-import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, Tuple, Type, Union
 
@@ -18,6 +17,9 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from dn_splatter.losses import DepthLoss, DepthLossType, TVLoss
 from dn_splatter.metrics import DepthMetrics, NormalMetrics, RGBMetrics
+from dn_splatter.regularization_strategy import (
+    DNRegularization,
+)
 from dn_splatter.utils.camera_utils import get_colored_points_from_depth, project_pix
 from dn_splatter.utils.knn import knn_sk
 from dn_splatter.utils.normal_utils import normal_from_depth_image
@@ -53,25 +55,25 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     _target: Type = field(default_factory=lambda: DNSplatterModel)
 
     ### DNSplatter configs ###
+    regularization_strategy: Literal["dn-splatter"] = "dn-splatter"
+
     use_depth_loss: bool = False
     """Enable depth loss while training"""
     depth_loss_type: DepthLossType = DepthLossType.EdgeAwareLogL1
-    """Choose which depth loss to train with Literal["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1")"""
+    """Choose which depth loss to train with Literal["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]"""
     depth_tolerance: float = 0.1
     """Min depth value for depth loss"""
     smooth_loss_type: DepthLossType = DepthLossType.TV
     """Choose which smooth loss to train with Literal["TV", "EdgeAwareTV")"""
-    sensor_depth_lambda: float = 0.0
-    """Regularizer for sensor depth loss"""
-    mono_depth_lambda: float = 0.0
-    """Regularizer for mono depth loss"""
+    depth_lambda: float = 0.0
+    """Regularizer for depth loss"""
     use_depth_smooth_loss: bool = False
     """Whether to enable depth smooth loss or not"""
     smooth_loss_lambda: float = 0.1
     """Regularizer for smooth loss"""
     predict_normals: bool = True
     """Whether to extract and render normals or skip this"""
-    use_normal_loss: bool = False
+    use_normal_loss: bool = True
     """Enables normal loss('s)"""
     use_normal_cosine_loss: bool = False
     """Cosine similarity loss"""
@@ -94,20 +96,6 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     two_d_gaussians: bool = True
     """Encourage 2D Gaussians"""
 
-    ### SuGaR style sdf loss settings ###
-    use_sdf_loss: bool = False
-    """Enable sdf loss during training"""
-    sdf_loss_lambda: float = 0.1
-    """Regularizer for sdf loss"""
-    apply_sdf_loss_after_iters: int = 200
-    """Start applying sdf loss after n training iterations"""
-    apply_sdf_loss_iters: int = 10
-    """Iterations to apply sdf loss"""
-    knn_to_track: int = 16
-    """How many nearest neighbours per gaussian to track"""
-    num_sdf_samples: int = 100
-    """Number of sdf samples to take"""
-
     ### Splatfacto configs ###
     warmup_length: int = 500
     """period of steps where refinement is turned off"""
@@ -128,6 +116,10 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     output_depth_during_training: bool = True
     """If True, output depth during training. Otherwise, only output depth during evaluation."""
 
+    # pearson depth loss lambda
+    pearson_lambda: float = 0
+    """Regularizer for pearson depth loss"""
+
 
 class DNSplatterModel(SplatfactoModel):
     """Depth + Normal splatter"""
@@ -139,6 +131,7 @@ class DNSplatterModel(SplatfactoModel):
             means = torch.nn.Parameter(self.seed_points[0])  # (Location, Color)
         else:
             means = torch.nn.Parameter((torch.rand((500000, 3)) - 0.5) * 10)
+        CONSOLE.log(f"Number of initial seed points {means.shape[0]}")
         self.xys_grad_norm = None
         self.max_2Dsize = None
         dim_sh = num_sh_bases(self.config.sh_degree)
@@ -174,6 +167,8 @@ class DNSplatterModel(SplatfactoModel):
         # Depth Losses
         if self.config.use_depth_loss:
             self.depth_loss = DepthLoss(self.config.depth_loss_type)
+            assert self.config.depth_lambda > 0, "depth_lambda should be > 0"
+
         if self.config.use_depth_smooth_loss:
             if self.config.smooth_loss_type == DepthLossType.EdgeAwareTV:
                 self.smooth_loss = DepthLoss(depth_loss_type=DepthLossType.EdgeAwareTV)
@@ -197,7 +192,7 @@ class DNSplatterModel(SplatfactoModel):
                 self.seed_points is not None and len(self.seed_points) == 3
             ):  # type: ignore
                 CONSOLE.print(
-                    "[bold yellow]Initialising Gaussian normals from SfM estimates"
+                    "[bold yellow]Initialising Gaussian normals from intial seed points"
                 )
                 self.normals_seed = self.seed_points[-1].float()  # type: ignore
                 self.normals_seed = self.normals_seed / torch.norm(
@@ -239,13 +234,6 @@ class DNSplatterModel(SplatfactoModel):
             }
         )
 
-        if self.config.use_sdf_loss:
-            self._knn = knn_sk(
-                x=self.means.data.to("cuda"),
-                y=self.means.data.to("cuda"),
-                k=self.config.knn_to_track,
-            )
-
         self.camera_idx = 0
         self.camera = None
         if self.config.use_normal_tv_loss:
@@ -255,6 +243,22 @@ class DNSplatterModel(SplatfactoModel):
         self.camera_optimizer: CameraOptimizer = self.config.camera_optimizer.setup(
             num_cameras=self.num_train_data, device="cpu"
         )
+
+        if self.config.regularization_strategy == "dn-splatter":
+            self.regularization_strategy = DNRegularization()
+        else:
+            raise NotImplementedError
+
+        if self.config.use_depth_loss:
+            self.regularization_strategy.depth_loss_type = self.config.depth_loss_type
+            self.regularization_strategy.depth_loss = self.depth_loss
+            self.regularization_strategy.depth_lambda = self.config.depth_lambda
+        else:
+            self.regularization_strategy.depth_loss_type = None
+            self.regularization_strategy.depth_loss = None
+
+        if not self.config.use_normal_loss:
+            self.regularization_strategy.normal_loss = None
 
     @property
     def normals(self):
@@ -377,19 +381,6 @@ class DNSplatterModel(SplatfactoModel):
             self.vis_counts = None
             self.max_2Dsize = None
 
-            if (
-                self.config.use_sdf_loss
-                and self.step >= self.config.apply_sdf_loss_after_iters
-                and deleted_mask is not None
-            ):
-                # BUG: it is possible to have NaNs
-                means = torch.nan_to_num(self.means.data.detach().to("cuda"))
-                start = time.time()
-                self._knn = knn_sk(x=means, y=means, k=self.config.knn_to_track)
-                CONSOLE.log(
-                    f"Recomputing KNN took: {time.time() - start} seconds for {self.num_points} points"
-                )
-
     def get_gaussian_param_groups(self) -> Dict[str, List[Parameter]]:
         # Here we explicitly use the means, scales as parameters so that the user can override this function and
         # specify more if they want to add more optimizable params to gaussians.
@@ -409,7 +400,6 @@ class DNSplatterModel(SplatfactoModel):
     def get_outputs(
         self, camera: Cameras
     ) -> Dict[str, Union[torch.Tensor, List[Tensor]]]:
-
         """Takes in a Ray Bundle and returns a dictionary of outputs.
 
         Args:
@@ -588,10 +578,31 @@ class DNSplatterModel(SplatfactoModel):
                 self.camera_idx = camera.metadata["cam_idx"]  # type: ignore
         self.camera = camera
 
+        c2w = self.camera.camera_to_worlds.squeeze(0).detach()
+        c2w = c2w @ torch.diag(
+            torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=c2w.dtype)
+        )
+        surface_normal = normal_from_depth_image(
+            depths=depth_im.detach(),
+            fx=self.camera.fx.item(),
+            fy=self.camera.fy.item(),
+            cx=self.camera.cx.item(),
+            cy=self.camera.cy.item(),
+            img_size=(self.camera.width.item(), self.camera.height.item()),
+            c2w=torch.eye(4, dtype=torch.float, device=depth_im.device),
+            device=self.device,
+            smooth=False,
+        )
+        surface_normal = surface_normal @ torch.diag(
+            torch.tensor([1, -1, -1], device=depth_im.device, dtype=depth_im.dtype)
+        )
+        surface_normal = (1 + surface_normal) / 2
+
         return {
             "rgb": rgb.squeeze(0),
             "depth": depth_im,
-            "normal": normals_im,
+            "normal": normals_im,  # predicted normal from gaussians
+            "surface_normal": surface_normal,  # normal from surface / depth
             "accumulation": alpha.squeeze(0),
             "background": background,
         }
@@ -619,6 +630,8 @@ class DNSplatterModel(SplatfactoModel):
         pred_img = outputs["rgb"]
         depth_out = outputs["depth"]
 
+        sensor_depth_gt = None
+        mono_depth_gt = None
         if "sensor_depth" in batch:
             sensor_depth_gt = self.get_gt_img(batch["sensor_depth"])
         if "mono_depth" in batch:
@@ -643,172 +656,46 @@ class DNSplatterModel(SplatfactoModel):
         # RGB loss
         rgb_loss = main_loss
 
-        # Depth Loss
-        depth_loss = 0
-        if self.config.use_depth_loss:
-            if "sensor_depth" in batch and self.config.sensor_depth_lambda > 0.0:
-                valid_gt_mask = sensor_depth_gt > self.config.depth_tolerance
-                if self.config.depth_loss_type == DepthLossType.EdgeAwareLogL1:
-                    sensor_depth_loss = self.depth_loss(
-                        depth_out, sensor_depth_gt.float(), gt_img, valid_gt_mask
-                    )
-                    depth_loss += self.config.sensor_depth_lambda * sensor_depth_loss
+        pred_normal = outputs["normal"]
+        surface_normal = outputs["surface_normal"]
+        if "normal" in batch and self.config.normal_supervision == "mono":
+            gt_normal = batch["normal"]
+        elif self.config.normal_supervision == "depth":
+            gt_normal = normal_from_depth_image(
+                depths=depth_out.detach(),
+                fx=self.camera.fx.item(),
+                fy=self.camera.fy.item(),
+                cx=self.camera.cx.item(),
+                cy=self.camera.cy.item(),
+                img_size=(self.camera.width.item(), self.camera.height.item()),
+                c2w=torch.eye(4, dtype=torch.float, device=depth_out.device),
+                device=self.device,
+                smooth=False,
+            )
+            gt_normal = gt_normal @ torch.diag(
+                torch.tensor(
+                    [1, -1, -1], device=depth_out.device, dtype=depth_out.dtype
+                )
+            )
+            gt_normal = (1 + gt_normal) / 2
 
-                else:
-                    sensor_depth_loss = self.depth_loss(
-                        depth_out[valid_gt_mask], sensor_depth_gt[valid_gt_mask].float()
-                    )
+        additional_data = {"scales": self.scales, "gt_img": gt_img}
 
-                    depth_loss += self.config.sensor_depth_lambda * sensor_depth_loss
+        if sensor_depth_gt is not None:
+            depth_gt = sensor_depth_gt
+        if mono_depth_gt is not None:
+            depth_gt = mono_depth_gt
 
-            if "mono_depth" in batch and self.config.mono_depth_lambda > 0.0:
-                valid_gt_mask = mono_depth_gt > 0.0
-                if self.config.depth_loss_type == DepthLossType.EdgeAwareLogL1:
-                    valid_gt_mask = mono_depth_gt > self.config.depth_tolerance
-                    mono_depth_loss = self.depth_loss(
-                        depth_out, mono_depth_gt.float(), gt_img, valid_gt_mask
-                    )
-                    depth_loss += self.config.mono_depth_lambda * mono_depth_loss
-                else:
-                    mono_depth_loss = self.depth_loss(
-                        depth_out[valid_gt_mask], mono_depth_gt[valid_gt_mask].float()
-                    )
-                    depth_loss += self.config.mono_depth_lambda * mono_depth_loss
-
-        # Smooth loss
-        if self.config.use_depth_smooth_loss:
-            if self.config.smooth_loss_type == DepthLossType.TV:
-                smooth_loss = self.smooth_loss(depth_out)
-                depth_loss += self.config.smooth_loss_lambda * smooth_loss
-            elif self.config.smooth_loss_type == DepthLossType.EdgeAwareTV:
-                assert depth_out.shape[:2] == outputs["rgb"].shape[:2]
-                smooth_loss = self.smooth_loss(depth_out, gt_img)
-                depth_loss += self.config.smooth_loss_lambda * smooth_loss
-
-        if self.config.use_depth_loss and depth_loss == 0 and self.step % 100 == 0:
-            CONSOLE.log(
-                "WARNING: you have enabled depth loss but depth loss is still ZERO. Remember to set --pipeline.model.sensor-depth-lambda and/or --pipeleine.model.mono-depth-lambda > 0"
+        if self.config.regularization_strategy == "dn-splatter":
+            regularization_strategy_loss = self.regularization_strategy(
+                pred_depth=depth_out,
+                gt_depth=depth_gt,
+                pred_normal=pred_normal,
+                gt_normal=gt_normal,
+                **additional_data,
             )
 
-        # Normal loss
-        normal_loss = 0
-        if self.config.use_normal_loss:
-            pred_normal = outputs["normal"]
-
-            if "normal" in batch and self.config.normal_supervision == "mono":
-                gt_normal = batch["normal"]
-            elif self.config.normal_supervision == "depth":
-                c2w = self.camera.camera_to_worlds.squeeze(0).detach()
-                c2w = c2w @ torch.diag(
-                    torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=c2w.dtype)
-                )
-                gt_normal = normal_from_depth_image(
-                    depths=depth_out.detach(),
-                    fx=self.camera.fx.item(),
-                    fy=self.camera.fy.item(),
-                    cx=self.camera.cx.item(),
-                    cy=self.camera.cy.item(),
-                    img_size=(self.camera.width.item(), self.camera.height.item()),
-                    c2w=torch.eye(4, dtype=torch.float, device=depth_out.device),
-                    device=self.device,
-                    smooth=False,
-                )
-                gt_normal = gt_normal @ torch.diag(
-                    torch.tensor(
-                        [1, -1, -1], device=depth_out.device, dtype=depth_out.dtype
-                    )
-                )
-                gt_normal = (1 + gt_normal) / 2
-            else:
-                CONSOLE.log(
-                    "WARNING: You have enabled normal supervision with monocular normals but none were found."
-                )
-                CONSOLE.log(
-                    "WARNING: Remember to first generate normal maps for your dataset using the normals_from_pretrain.py script."
-                )
-                quit()
-            if gt_normal is not None:
-                # normal map loss
-                normal_loss += torch.abs(gt_normal - pred_normal).mean()
-                if self.config.use_normal_cosine_loss:
-                    from dn_splatter.metrics import mean_angular_error
-
-                    normal_loss += mean_angular_error(
-                        pred=(pred_normal.permute(2, 0, 1) - 1) / 2,
-                        gt=(gt_normal.permute(2, 0, 1) - 1) / 2,
-                    ).mean()
-            if self.config.use_normal_tv_loss:
-                normal_loss += self.tv_loss(pred_normal)
-
-        if self.config.two_d_gaussians:
-            # loss to minimise gaussian scale corresponding to normal direction
-            normal_loss += torch.min(torch.exp(self.scales), dim=1, keepdim=True)[
-                0
-            ].mean()
-
-        sparse_loss = 0
-        if (
-            self.config.use_sparse_loss
-            and self.step % self.config.sparse_loss_steps == 0
-        ):  # type: ignore
-            skip_steps = self.config.reset_alpha_every * self.config.refine_every
-            margin = 100
-            if not self.step % skip_steps == 0 and self.step % skip_steps not in range(
-                1, margin + 1
-            ):
-                opacities = torch.sigmoid(self.opacities[self.vis_indices])
-                sparse_loss = (
-                    -opacities * torch.log(opacities + 1e-10)
-                    - (1 - opacities) * torch.log(1 - opacities + 1e-10)
-                ).mean()
-                sparse_loss *= self.config.sparse_lambda
-
-        sdf_loss = 0
-        if (
-            self.config.use_sdf_loss
-            and self.step > self.config.apply_sdf_loss_after_iters
-            and self.step % self.config.apply_sdf_loss_iters == 0
-        ):
-            if self.num_points > self.config.num_sdf_samples:
-                num_samples = self.num_points
-            else:
-                num_samples = self.config.num_sdf_samples
-
-            # sample points according to gaussian distribution on surface
-            samples, indices = self.sample_points_in_gaussians(
-                num_samples=num_samples, vis_indices=self.vis_indices
-            )
-            # query closest gaussians to sampled points
-            with torch.no_grad():
-                closest_gaussians = self._knn[indices]
-            # compute current sdf estimates of samples
-            current_sdfs = self.get_sdf(
-                sdf_samples=samples,
-                closest_gaussians=closest_gaussians,
-                vis_indices=self.vis_indices,
-            )
-            # estimate ideal sdfs
-            ideal_sdfs, valid_indices = self.get_ideal_sdf(
-                sdf_samples=samples.clone().detach(),
-                depth=depth_out.clone().detach(),
-                camera=self.camera,  # type: ignore
-                mask=batch["mask"] if "mask" in batch else None,
-            )
-            ideal_sdfs = torch.abs(ideal_sdfs)
-            # print(f"get_ideal_sdf took { time.time() - start} s")
-            current_sdfs = current_sdfs[valid_indices]
-
-            weight = self.get_sdf_loss_weight(valid_indices)
-
-            sdf_loss = (torch.abs(ideal_sdfs - current_sdfs) / (weight + 1e-5)).mean()
-
-        main_loss = (
-            rgb_loss
-            + depth_loss
-            + self.config.normal_lambda * normal_loss
-            + sparse_loss
-            + self.config.sdf_loss_lambda * sdf_loss
-        )
+        main_loss = rgb_loss + regularization_strategy_loss
 
         return {"main_loss": main_loss, "scale_reg": scale_reg}
 
@@ -981,6 +868,13 @@ class DNSplatterModel(SplatfactoModel):
         if "normal" in batch:
             gt_normal = batch["normal"].to(self.device)
 
+            if gt_normal.shape != predicted_normal.shape:
+                predicted_normal = TF.resize(
+                    predicted_normal.permute(2, 0, 1),
+                    gt_normal.shape[:2],
+                    antialias=None,
+                ).permute(1, 2, 0)
+
             (mae, rmse, mean_err, med_err) = self.normal_metrics(
                 predicted_normal.permute(2, 0, 1).unsqueeze(0),
                 gt_normal.permute(2, 0, 1).unsqueeze(0),
@@ -1147,7 +1041,7 @@ class DNSplatterModel(SplatfactoModel):
         closest_gaussians = knn_sk(
             x=self.means.data.to("cuda"),
             y=samples.to("cuda"),
-            k=self.config.knn_to_track,
+            k=16,
         )
         return closest_gaussians
 
@@ -1337,9 +1231,7 @@ class DNSplatterModel(SplatfactoModel):
         colors = colors[~no_depth_mask]
 
         # get closest gaussians
-        closest_gaussians_idx = knn_sk(
-            self.means.data, points, k=self.config.knn_to_track
-        )
+        closest_gaussians_idx = knn_sk(self.means.data, points, k=16)
 
         # compute gaussian stds along ray direction
         viewdirs = -self.means.detach() + camera.camera_to_worlds.detach()[..., :3, 3]
@@ -1377,7 +1269,7 @@ class DNSplatterModel(SplatfactoModel):
         samples_closest_gaussians_idx = (
             closest_gaussians_idx[:, None, :]
             .expand(-1, n_points_in_range, -1)
-            .reshape(-1, self.config.knn_to_track)
+            .reshape(-1, 16)
         )
 
         densities = torch.zeros(len(samples), dtype=torch.float, device=self.device)
@@ -1507,9 +1399,11 @@ class DNSplatterModel(SplatfactoModel):
             assert intersection_points.shape[0] == intersection_normals.shape[0]
             indices = random.sample(
                 range(intersection_points.shape[0]),
-                num_samples
-                if num_samples < intersection_points.shape[0]
-                else intersection_points.shape[0],
+                (
+                    num_samples
+                    if num_samples < intersection_points.shape[0]
+                    else intersection_points.shape[0]
+                ),
             )
             samples_mask = torch.tensor(indices, device=points.device)
             intersection_points = intersection_points[samples_mask]

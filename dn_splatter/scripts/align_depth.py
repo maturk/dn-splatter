@@ -71,6 +71,8 @@ class ColmapToAlignedMonoDepths:
     """Skip colmap to sfm step"""
     skip_mono_depth_creation: bool = False
     """Skip mono depth creation"""
+    skip_alignment: bool = False
+    """Skip alignment"""
     iterations: int = 1000
     """Number of grad descent iterations to align depths"""
     align_method: Literal["closed_form", "grad_descent"] = "closed_form"
@@ -101,87 +103,87 @@ class ColmapToAlignedMonoDepths:
                 )
             else:
                 CONSOLE.print("Found previous /mono_depth path")
-
-        CONSOLE.print("Aligning sparse depth maps with mono estimates")
-        # Align sparse sfm depth maps with mono depth maps
-        batch_size = BATCH_SIZE
-        sfm_depth_filenames = get_filename_list(
-            image_dir=self.data / Path("sfm_depths"), ends_with=".npy"
-        )
-        mono_depth_filenames = get_filename_list(
-            image_dir=self.data / Path("mono_depth"), ends_with=".npy"
-        )
-        # filter out aligned depth and frames not have pose
-        sfm_name = [item.name for item in sfm_depth_filenames]
-        mono_depth_filenames = [
-            item
-            for item in mono_depth_filenames
-            if "_aligned.npy" not in item.name and str(item.stem) in str(sfm_name)
-        ]
-        assert len(sfm_depth_filenames) == len(mono_depth_filenames)
-
-        H, W = depth_path_to_tensor(sfm_depth_filenames[0]).shape[:2]
-
-        num_frames = len(sfm_depth_filenames)
-
-        for batch_index in range(0, num_frames, batch_size):
-            batch_sfm_frames = sfm_depth_filenames[
-                batch_index : batch_index + batch_size
+        if not self.skip_alignment:
+            CONSOLE.print("Aligning sparse depth maps with mono estimates")
+            # Align sparse sfm depth maps with mono depth maps
+            batch_size = BATCH_SIZE
+            sfm_depth_filenames = get_filename_list(
+                image_dir=self.data / Path("sfm_depths"), ends_with=".npy"
+            )
+            mono_depth_filenames = get_filename_list(
+                image_dir=self.data / Path("mono_depth"), ends_with=".npy"
+            )
+            # filter out aligned depth and frames not have pose
+            sfm_name = [item.name for item in sfm_depth_filenames]
+            mono_depth_filenames = [
+                item
+                for item in mono_depth_filenames
+                if "_aligned.npy" not in item.name and str(item.stem) in str(sfm_name)
             ]
-            batch_mono_frames = mono_depth_filenames[
-                batch_index : batch_index + batch_size
-            ]
+            assert len(sfm_depth_filenames) == len(mono_depth_filenames)
 
-            with torch.no_grad():
-                mono_depth_tensors = []
-                sparse_depths = []
+            H, W = depth_path_to_tensor(sfm_depth_filenames[0]).shape[:2]
 
-                for frame_index in range(len(batch_sfm_frames)):
-                    sfm_frame = batch_sfm_frames[frame_index]
-                    mono_frame = batch_mono_frames[frame_index]
-                    mono_depth = depth_path_to_tensor(
-                        mono_frame,
-                        return_color=False,
-                        scale_factor=0.001 if mono_frame.suffix == ".png" else 1,
-                    )  # note that npy depth maps are in meters
-                    mono_depth_tensors.append(mono_depth)
+            num_frames = len(sfm_depth_filenames)
 
-                    sfm_depth = depth_path_to_tensor(
-                        sfm_frame, return_color=False, scale_factor=1
+            for batch_index in range(0, num_frames, batch_size):
+                batch_sfm_frames = sfm_depth_filenames[
+                    batch_index : batch_index + batch_size
+                ]
+                batch_mono_frames = mono_depth_filenames[
+                    batch_index : batch_index + batch_size
+                ]
+
+                with torch.no_grad():
+                    mono_depth_tensors = []
+                    sparse_depths = []
+
+                    for frame_index in range(len(batch_sfm_frames)):
+                        sfm_frame = batch_sfm_frames[frame_index]
+                        mono_frame = batch_mono_frames[frame_index]
+                        mono_depth = depth_path_to_tensor(
+                            mono_frame,
+                            return_color=False,
+                            scale_factor=0.001 if mono_frame.suffix == ".png" else 1,
+                        )  # note that npy depth maps are in meters
+                        mono_depth_tensors.append(mono_depth)
+
+                        sfm_depth = depth_path_to_tensor(
+                            sfm_frame, return_color=False, scale_factor=1
+                        )
+                        sparse_depths.append(sfm_depth)
+
+                    mono_depth_tensors = torch.stack(mono_depth_tensors, dim=0)
+                    sparse_depths = torch.stack(sparse_depths, dim=0)
+
+                if self.align_method == "closed_form":
+                    mask = (sparse_depths > 0.1) & (sparse_depths < 10.0)
+                    scale, shift = compute_scale_and_shift(
+                        mono_depth_tensors, sparse_depths, mask=mask
                     )
-                    sparse_depths.append(sfm_depth)
+                    scale = scale.unsqueeze(1).unsqueeze(2)
+                    shift = shift.unsqueeze(1).unsqueeze(2)
+                    depth_aligned = scale * mono_depth_tensors + shift
+                    mse_loss = torch.nn.MSELoss()
+                    avg = mse_loss(depth_aligned[mask], sparse_depths[mask])
+                    CONSOLE.print(
+                        f"[bold yellow]Average depth alignment error for batch depths is: {avg:3f} which is {'good' if avg<0.2 else 'bad'}"
+                    )
 
-                mono_depth_tensors = torch.stack(mono_depth_tensors, dim=0)
-                sparse_depths = torch.stack(sparse_depths, dim=0)
+                elif self.align_method == "grad_descent":
+                    depth_aligned = grad_descent(
+                        mono_depth_tensors, sparse_depths, iterations=self.iterations
+                    )
 
-            if self.align_method == "closed_form":
-                mask = (sparse_depths > 0.1) & (sparse_depths < 10.0)
-                scale, shift = compute_scale_and_shift(
-                    mono_depth_tensors, sparse_depths, mask=mask
-                )
-                scale = scale.unsqueeze(1).unsqueeze(2)
-                shift = shift.unsqueeze(1).unsqueeze(2)
-                depth_aligned = scale * mono_depth_tensors + shift
-                mse_loss = torch.nn.MSELoss()
-                avg = mse_loss(depth_aligned[mask], sparse_depths[mask])
-                CONSOLE.print(
-                    f"[bold yellow]Average depth alignment error for batch depths is: {avg:3f} which is {'good' if avg<0.2 else 'bad'}"
-                )
-
-            elif self.align_method == "grad_descent":
-                depth_aligned = grad_descent(
-                    mono_depth_tensors, sparse_depths, iterations=self.iterations
-                )
-
-            # save depths
-            for idx in track(
-                range(depth_aligned.shape[0]),
-                description="saving aligned depth images...",
-            ):
-                depth_aligned_numpy = depth_aligned[idx, ...].detach().cpu().numpy()
-                file_name = str(Path(batch_mono_frames[idx]).with_suffix(""))
-                # save only npy
-                np.save(Path(file_name + "_aligned.npy"), depth_aligned_numpy)
+                # save depths
+                for idx in track(
+                    range(depth_aligned.shape[0]),
+                    description="saving aligned depth images...",
+                ):
+                    depth_aligned_numpy = depth_aligned[idx, ...].detach().cpu().numpy()
+                    file_name = str(Path(batch_mono_frames[idx]).with_suffix(""))
+                    # save only npy
+                    np.save(Path(file_name + "_aligned.npy"), depth_aligned_numpy)
 
 
 # copy from monosdf

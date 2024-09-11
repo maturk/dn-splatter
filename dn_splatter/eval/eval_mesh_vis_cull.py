@@ -3,32 +3,25 @@ adapted from go_surf scripts:
 https://github.com/JingwenWang95/go-surf/blob/master/tools/mesh_metrics.py#L33
 """
 
-import enum
-from locale import normalize
-from pathlib import Path
-from re import I
-
-import numpy as np
-import open3d as o3d
-import trimesh
-import tyro
-from matplotlib import pyplot as plt
-from scipy.spatial import cKDTree
+import json
+import math
 import os
 from copy import deepcopy
-from typing import Dict, List, Literal, Optional, Tuple, Type, Union
-from PIL import Image
-import json
-import cv2
+from pathlib import Path
+from typing import Optional
+
 import cv2
 import numpy as np
+import open3d as o3d
 import torch
 import trimesh
 import tyro
+from matplotlib import pyplot as plt
+from PIL import Image
 from pytorch3d import transforms as py3d_transform
 from pytorch3d.renderer import MeshRasterizer, PerspectiveCameras, RasterizationSettings
 from pytorch3d.structures import Meshes
-import math
+from scipy.spatial import cKDTree
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -207,7 +200,6 @@ def cull_mesh(
     dataset_path,
     dataset,
     mesh,
-    save_path,
     transformation_files,
     remove_missing_depth=True,
     remove_occlusion=True,
@@ -217,8 +209,6 @@ def cull_mesh(
     mesh.remove_unreferenced_vertices()
     vertices = mesh.vertices
     triangles = mesh.faces
-
-    print(remove_occlusion)
 
     if subdivide:
         vertices, triangles = trimesh.remesh.subdivide_to_size(
@@ -296,7 +286,6 @@ def cull_mesh(
     mesh = trimesh.Trimesh(vertices, triangles_in_frustum, process=False)
     mesh.remove_unreferenced_vertices()
 
-    mesh.export(save_path)
     return mesh
 
 
@@ -442,28 +431,46 @@ transform = np.array(
 
 
 def main(
-    gt_mesh: Path,
-    pred_mesh: Path,
+    gt_mesh_path: Path,  # path to gt mesh folder
+    pred_mesh_path: Path,  # path to the pred mesh ply
+    output: Path = Path("."),  # output path
     align: bool = False,
     dataset: str = "scannetpp",
     transformation_file: Optional[Path] = None,
     dataset_path: Optional[Path] = None,
+    output_same_as_pred_mesh: Optional[bool] = True,
+    rename_output_file: Optional[str] = None,
 ):
-    gt_mesh_ply = trimesh.load(gt_mesh, process=False)
-    pd_mesh_ply = trimesh.load(pred_mesh, process=False)
+    gt_mesh = trimesh.load(str(gt_mesh_path), process=False)
+    pred_mesh = trimesh.load(str(pred_mesh_path), process=False)
 
     if dataset == "scannetpp":
-        gt_mesh_ply = gt_mesh_ply.apply_transform(transform)
-        # pd_mesh_ply = pd_mesh_ply.apply_transform(transform)
+        gt_mesh = gt_mesh.apply_transform(transform)
+        # pred_mesh = pred_mesh.apply_transform(transform)
     if align:
-        transformation = get_align_transformation(str(pred_mesh), str(gt_mesh))
-        pd_mesh_ply = pd_mesh_ply.apply_transform(transformation)
+        transformation = get_align_transformation(
+            str(pred_mesh_path), str(gt_mesh_path)
+        )
+        pred_mesh = pred_mesh.apply_transform(transformation)
 
-    gt_mesh_ply = cull_mesh(
+    if output_same_as_pred_mesh:
+        output = pred_mesh_path.parent
+
+    gt_mesh = cull_mesh(
         dataset_path,
         dataset,
-        gt_mesh_ply,
-        str(gt_mesh.parent / gt_mesh.stem) + "_pred_mesh_culled.ply",
+        gt_mesh,
+        str(transformation_file),
+        remove_missing_depth=True,
+        remove_occlusion=True,
+        subdivide=True,
+        max_edge=0.015,
+    )
+
+    pred_mesh = cull_mesh(
+        dataset_path,
+        dataset,
+        pred_mesh,
         transformation_file,
         remove_missing_depth=True,
         remove_occlusion=True,
@@ -471,22 +478,16 @@ def main(
         max_edge=0.015,
     )
 
-    pd_mesh_ply = cull_mesh(
-        dataset_path,
-        dataset,
-        pd_mesh_ply,
-        str(pred_mesh.parent / pred_mesh.stem) + "_pred_mesh_culled.ply",
-        transformation_file,
-        remove_missing_depth=True,
-        remove_occlusion=True,
-        subdivide=True,
-        max_edge=0.015,
-    )
-
-    pd_mesh_ply.export(str(pred_mesh.parent / pred_mesh.stem) + "_pred_mesh_culled.ply")
-    gt_mesh_ply.export(str(gt_mesh.parent / gt_mesh.stem) + "_gt_mesh_culled.ply")
-    rst = compute_metrics(pd_mesh_ply, gt_mesh_ply)
-
+    print(str(pred_mesh_path.parent / pred_mesh_path.stem) + "_mesh_culled.ply")
+    pred_mesh.export(str(output / "mesh_cull.ply"))
+    # gt_mesh.export(str(output / "gt_mesh_cull.ply"))
+    rst = compute_metrics(pred_mesh, gt_mesh)
+    if rename_output_file is None:
+        print(f"Saving results to: {output / 'mesh_metrics.json'}")
+        json.dump(rst, open(output / "mesh_metrics.json", "w"))
+    else:
+        print(f"Saving results to: {output / Path(rename_output_file)}")
+        json.dump(rst, open(output / Path(rename_output_file), "w"))
     # mesh metrics:
     #    "Acc": accuracy,  # lower better
     #    "Comp": completeness,  # lower better

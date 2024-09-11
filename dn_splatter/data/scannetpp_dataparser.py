@@ -15,6 +15,7 @@ from typing import Literal, Type
 import numpy as np
 import open3d as o3d
 import torch
+from dn_splatter.scripts.depth_to_normal import DepthToNormal
 from dn_splatter.data.scannetpp_utils.pointcloud_utils import generate_iPhone_pointcloud
 from dn_splatter.scripts.align_depth import ColmapToAlignedMonoDepths
 from dn_splatter.scripts.depth_from_pretrain import depth_from_pretrain
@@ -52,6 +53,8 @@ class ScanNetppDataParserConfig(ColmapDataParserConfig):
     """Whether input depth maps are Euclidean distances (or z-distances)."""
     load_depths: bool = True
     """Whether to load depth maps"""
+    load_depth_confidence_masks: bool = False
+    """Whether to load depth confidence masks"""
     mono_pretrain: Literal["zoe"] = "zoe"
     """Which mono depth pretrain model to use."""
     load_normals: bool = True
@@ -198,8 +201,6 @@ class ScanNetpp(ColmapDataParser):
         if self.config.mode == "iphone":
             num_imgs = len(image_filenames)
             indices = list(range(num_imgs))
-            if self.config.load_every > 1:
-                indices = indices[:: self.config.load_every]
             assert self.config.skip_every_for_val_split >= 1
             eval_indices = indices[:: self.config.skip_every_for_val_split]
             i_eval = [i for i in indices if i in eval_indices]
@@ -207,6 +208,8 @@ class ScanNetpp(ColmapDataParser):
 
         if split == "train":
             indices = i_train
+            if self.config.load_every > 1:
+                indices = indices[:: self.config.load_every]
         elif split in ["val", "test"]:
             indices = i_eval
         else:
@@ -258,6 +261,20 @@ class ScanNetpp(ColmapDataParser):
                 width[0],
                 height[0],
                 poses[:, :3, :4],
+                "transforms.json",
+            )
+        else:
+            self._write_json(
+                image_filenames,
+                depth_filenames,
+                fx[0],
+                fy[0],
+                cx[0],
+                cy[0],
+                width[0],
+                height[0],
+                poses[:, :3, :4],
+                "transforms_test.json",
             )
 
         metadata = {}
@@ -402,6 +419,7 @@ class ScanNetpp(ColmapDataParser):
         metadata.update({"depth_mode": self.config.depth_mode})
         metadata.update({"is_euclidean_depth": self.config.is_euclidean_depth})
         metadata.update({"load_depths": self.config.load_depths})
+        metadata.update({"load_confidence": self.config.load_depth_confidence_masks})
 
         if self.config.depth_mode in ["mono", "all"]:
             self.depth_save_dir = self.input_folder / Path("mono_depth")
@@ -460,7 +478,6 @@ class ScanNetpp(ColmapDataParser):
                         )
                     }
                 )
-
         if self.config.depth_mode in ["sensor", "all"]:
             metadata.update(
                 {
@@ -469,6 +486,18 @@ class ScanNetpp(ColmapDataParser):
                     )
                 }
             )
+
+        if self.config.load_depth_confidence_masks:
+            self.confidence_save_dir = self.input_folder / Path("depth_normals_mask")
+            if not (self.confidence_save_dir).exists():
+                CONSOLE.log(
+                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(self.confidence_save_dir)}"
+                )
+                DepthToNormal(
+                    data_dir=self.input_folder, transforms_name="transforms.json"
+                ).main()
+            confidence_filenames = self.get_confidence_filepaths()
+            metadata.update({"confidence_filenames": confidence_filenames})
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
@@ -490,6 +519,11 @@ class ScanNetpp(ColmapDataParser):
         """Helper to load depth paths"""
         depth_list = natsorted(glob.glob(f"{self.depth_save_dir}/*_aligned.npy"))
         return depth_list
+
+    def get_confidence_filepaths(self):
+        """Helper to load confidence paths"""
+        confidence_list = natsorted(glob.glob(f"{self.confidence_save_dir}/*.jpg"))
+        return confidence_list
 
     def _load_iphone_3D_points(
         self, ply_file_path: Path, transform_matrix: torch.Tensor, scale_factor: float
@@ -525,6 +559,7 @@ class ScanNetpp(ColmapDataParser):
         width,
         height,
         camera_to_worlds,
+        name,
     ):
         frames = []
         base_dir = Path(image_filenames[0]).parent.parent
@@ -550,7 +585,7 @@ class ScanNetpp(ColmapDataParser):
         out["w"] = width
         out["h"] = height
         out["frames"] = frames
-        with open(base_dir / "transforms.json", "w", encoding="utf-8") as f:
+        with open(base_dir / name, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=4)
 
     def _load_points3D_normals(self, ply_file_path: Path, selected_indices):

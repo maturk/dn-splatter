@@ -1,7 +1,7 @@
 """Loss functions"""
 
-
 import abc
+import math
 from enum import Enum
 from typing import Literal, Optional
 
@@ -26,6 +26,8 @@ class DepthLossType(Enum):
     TV = "TV"
     EdgeAwareLogL1 = "EdgeAwareLogL1"
     EdgeAwareTV = "EdgeAwareTV"
+    PearsonDepth = "PearsonDepth"
+    LocalPearsonDepthLoss = "LocalPearsonDepthLoss"
 
 
 class DepthLoss(nn.Module):
@@ -56,6 +58,10 @@ class DepthLoss(nn.Module):
             return EdgeAwareTV(**self.kwargs)
         elif self.depth_loss_type == DepthLossType.TV:
             return TVLoss(**self.kwargs)
+        elif self.depth_loss_type == DepthLossType.PearsonDepth:
+            return PearsonDepthLoss(**self.kwargs)
+        elif self.depth_loss_type == DepthLossType.LocalPearsonDepthLoss:
+            return LocalPearsonDepthLoss(**self.kwargs)
         else:
             raise ValueError(f"Unsupported loss type: {self.depth_loss_type}")
 
@@ -340,3 +346,93 @@ class SensorDepthLoss(nn.Module):
             torch.mean(((z_vals + pred_sdf) - depth_gt) ** 2 * sdf_mask) * sdf_weight
         )
         return l1_loss, free_space_loss, sdf_loss
+
+
+class NormalLossType(Enum):
+    """Enum for specifying depth loss"""
+
+    L1 = "L1"
+    Smooth = "Smooth"
+
+
+class NormalLoss(nn.Module):
+    """Factory method class for various depth losses"""
+
+    def __init__(self, normal_loss_type: NormalLossType, **kwargs):
+        super().__init__()
+        self.normal_loss_type = normal_loss_type
+        self.kwargs = kwargs
+        self.loss = self._get_loss_instance()
+
+    @abc.abstractmethod
+    def forward(self, *args) -> Tensor:
+        return self.loss(*args)
+
+    def _get_loss_instance(self) -> nn.Module:
+        if self.normal_loss_type == NormalLossType.L1:
+            return L1(**self.kwargs)
+        elif self.normal_loss_type == NormalLossType.Smooth:
+            return TVLoss(**self.kwargs)
+        else:
+            raise ValueError(f"Unsupported loss type: {self.normal_loss_type}")
+
+
+# pearson depth loss, adapted from https://github.com/ForMyCat/SparseGS/blob/95e7aef29c5562400d3b2b38cc7e90436a432b7c/utils/loss_utils.py#L80
+class PearsonDepthLoss(nn.Module):
+    """PearsonDepthLoss"""
+
+    def __init__(self):
+        super(PearsonDepthLoss, self).__init__()
+
+    def forward(self, depth_pred, depth_gt):
+        """take the mim
+        Args:
+            batch (Dict): inputs render depth, target depth
+            outputs (Dict): outputs data
+        Returns:
+            p_loss: pearson depth loss
+        """
+        src = depth_pred - depth_pred.mean()
+        target = depth_gt - depth_gt.mean()
+
+        src = src / (src.std() + 1e-6)
+        target = target / (target.std() + 1e-6)
+
+        co = (src * target).mean()
+        assert not torch.any(torch.isnan(co))
+        return 1 - co
+
+
+# pearson local depth loss, adapted from https://github.com/ForMyCat/SparseGS/blob/95e7aef29c5562400d3b2b38cc7e90436a432b7c/utils/loss_utils.py#L94
+class LocalPearsonDepthLoss(nn.Module):
+    """LocalPearsonDepthLoss"""
+
+    def __init__(self):
+        super(LocalPearsonDepthLoss, self).__init__()
+        self.pearson_depth_loss = PearsonDepthLoss()
+
+    def forward(self, depth_pred, depth_gt, box_p=128, p_corr=0.5):
+        """take the mim
+        Args:
+            batch (Dict): inputs render depth, target depth
+            outputs (Dict): outputs data
+        Returns:
+            p_loss: pearson depth loss
+        """
+        num_box_h = math.floor(depth_pred.shape[0] / box_p)
+        num_box_w = math.floor(depth_pred.shape[1] / box_p)
+        max_h = depth_pred.shape[0] - box_p
+        max_w = depth_pred.shape[1] - box_p
+        _loss = torch.tensor(0.0, device="cuda")
+        n_corr = int(p_corr * num_box_h * num_box_w)
+        x_0 = torch.randint(0, max_h, size=(n_corr,), device="cuda")
+        y_0 = torch.randint(0, max_w, size=(n_corr,), device="cuda")
+        x_1 = x_0 + box_p
+        y_1 = y_0 + box_p
+        _loss = torch.tensor(0.0, device="cuda")
+        for i in range(len(x_0)):
+            _loss += self.pearson_depth_loss(
+                depth_pred[x_0[i] : x_1[i], y_0[i] : y_1[i]].reshape(-1),
+                depth_gt[x_0[i] : x_1[i], y_0[i] : y_1[i]].reshape(-1),
+            )
+        return _loss / n_corr  #
