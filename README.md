@@ -47,7 +47,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
-- 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support for visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
+- 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
 - 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
 - 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
@@ -94,6 +94,7 @@ This repo registers a new model called `dn-splatter` with various additional opt
 | Command | Description |
 |--------------------|---|
 | --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
+| --pipeline.model.depth-loss-type (MSE, LogL1, HuberL1, L1, EdgeAwareLogL1, PearsonDepth) | Depth loss type |
 | --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
 | --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
 | --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
@@ -152,6 +153,7 @@ But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson f
 <img src="./assets/replica_poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
 
 </details>
+<br>
 
 # Scripts
 
