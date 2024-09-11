@@ -65,10 +65,8 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Min depth value for depth loss"""
     smooth_loss_type: DepthLossType = DepthLossType.TV
     """Choose which smooth loss to train with Literal["TV", "EdgeAwareTV")"""
-    sensor_depth_lambda: float = 0.0
-    """Regularizer for sensor depth loss"""
-    mono_depth_lambda: float = 0.0
-    """Regularizer for mono depth loss"""
+    depth_lambda: float = 0.0
+    """Regularizer for depth loss"""
     use_depth_smooth_loss: bool = False
     """Whether to enable depth smooth loss or not"""
     smooth_loss_lambda: float = 0.1
@@ -169,6 +167,8 @@ class DNSplatterModel(SplatfactoModel):
         # Depth Losses
         if self.config.use_depth_loss:
             self.depth_loss = DepthLoss(self.config.depth_loss_type)
+            assert self.config.depth_lambda > 0, "depth_lambda should be > 0"
+
         if self.config.use_depth_smooth_loss:
             if self.config.smooth_loss_type == DepthLossType.EdgeAwareTV:
                 self.smooth_loss = DepthLoss(depth_loss_type=DepthLossType.EdgeAwareTV)
@@ -252,6 +252,7 @@ class DNSplatterModel(SplatfactoModel):
         if self.config.use_depth_loss:
             self.regularization_strategy.depth_loss_type = self.config.depth_loss_type
             self.regularization_strategy.depth_loss = self.depth_loss
+            self.regularization_strategy.depth_lambda = self.config.depth_lambda
         else:
             self.regularization_strategy.depth_loss_type = None
             self.regularization_strategy.depth_loss = None

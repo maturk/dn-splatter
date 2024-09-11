@@ -30,7 +30,7 @@ class Config:
     iterations: int = 30000
     # Depth configs
     use_depth_loss: bool = False
-    sensor_depth_lambda: float = 0.2
+    depth_lambda: float = 0.2
     use_depth_smooth_loss: bool = False
     depth_loss_type: str = "EdgeAwareLogL1"  # MSE, LogL1, HuberL1, L1, EdgeAwareLogL1
     smooth_loss_lambda: float = 0.1
@@ -142,8 +142,8 @@ def train_scene(
                 str(config.use_depth_loss),
                 "--pipeline.model.depth-loss-type",
                 config.depth_loss_type,
-                "--pipeline.model.sensor-depth-lambda",
-                str(config.sensor_depth_lambda),
+                "--pipeline.model.depth-lambda",
+                str(config.depth_lambda),
                 "--pipeline.model.use-depth-smooth-loss",
                 str(config.use_depth_smooth_loss),
                 "--pipeline.model.smooth-loss-lambda",

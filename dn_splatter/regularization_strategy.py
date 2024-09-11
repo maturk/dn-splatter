@@ -1,9 +1,10 @@
 from abc import abstractmethod
+from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional
+
 from dn_splatter.losses import DepthLoss, DepthLossType, NormalLoss, NormalLossType
 
 
@@ -163,7 +164,7 @@ class DNRegularization(RegularizationStrategy):
             depth_loss = self.depth_loss(
                 pred_depth, gt_depth.float(), gt_img, valid_gt_mask
             )
-        elif self.config.depth_loss_type == DepthLossType.PearsonDepth:
+        elif self.depth_loss_type == DepthLossType.PearsonDepth:
             mono_depth_loss_pearson = (
                 self.depth_loss(pred_depth, gt_depth.float()) * valid_gt_mask.sum()
             ) / valid_gt_mask.sum()
@@ -172,7 +173,7 @@ class DNRegularization(RegularizationStrategy):
                 local_depth_loss(pred_depth, gt_depth.float()) * valid_gt_mask.sum()
             ) / valid_gt_mask.sum()
             depth_loss = (
-                mono_depth_loss_pearson + self.pearson_lambda * mono_depth_loss_local
+                mono_depth_loss_pearson + self.depth_lambda * mono_depth_loss_local
             )
 
         else:

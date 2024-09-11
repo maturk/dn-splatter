@@ -1,6 +1,7 @@
 """Loss functions"""
 
 import abc
+import math
 from enum import Enum
 from typing import Literal, Optional
 
@@ -11,7 +12,6 @@ from torchmetrics.image import (
     MultiScaleStructuralSimilarityIndexMeasure,
     StructuralSimilarityIndexMeasure,
 )
-from dn_splatter.metrics import mean_angular_error
 
 from nerfstudio.field_components.field_heads import FieldHeadNames
 

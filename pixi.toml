@@ -13,7 +13,7 @@ download-data-sample = {cmd="ls datasets/koivu_iphone.tar.gz || python dn_splatt
 train-mushroom-sample = """
     ns-train dn-splatter \
     --pipeline.model.use-depth-loss True \
-    --pipeline.model.sensor-depth-lambda 0.2 \
+    --pipeline.model.depth-lambda 0.2 \
     --pipeline.model.use-depth-smooth-loss True \
     --pipeline.model.use-normal-loss True \
     --pipeline.model.normal-supervision mono \
@@ -31,7 +31,7 @@ train-polycam = """
 ns-train dn-splatter \
     --max-num-iterations 5001 \
     --pipeline.model.use-depth-loss True \
-    --pipeline.model.sensor-depth-lambda 0.2 \
+    --pipeline.model.depth-lambda 0.2 \
     --pipeline.model.use-depth-smooth-loss True \
     --pipeline.model.use-normal-loss True \
     --pipeline.model.normal-supervision mono \
