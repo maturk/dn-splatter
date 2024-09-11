@@ -47,23 +47,27 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
-- 04.09.2024: Support Open3d TSDF to extract mesh, support colmap SFM point cloud initialization for MuSHRoom dataset, support Patch-based Depth Correlation Loss borrowed from [SparseGS](https://github.com/ForMyCat/SparseGS) for monocular depth supervision.
+- 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support for visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
 - 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
 - 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
 ## Installation
-### Method 1. Using Conda and Pip
-Follow installation instructions for [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html). This repo is compatible with a `nerfstudio` conda environment.
+<details close>
+<summary> Method 1. Using Conda and Pip</summary>
+    Follow installation instructions for [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html). This repo is compatible with a `nerfstudio` conda environment.
 
-Clone and install DN-Splatter
-```bash
-conda activate nerfstudio
-git clone https://github.com/maturk/dn-splatter
-cd dn_splatter/
-pip install setuptools==69.5.1
-pip install -e .
-```
-### Method 2. Using Pixi
+    Clone and install DN-Splatter
+    ```bash
+    conda activate nerfstudio
+    git clone https://github.com/maturk/dn-splatter
+    cd dn_splatter/
+    pip install setuptools==69.5.1
+    pip install -e .
+    ```
+</details>
+
+<details close>
+<summary> Method 2. Using Pixi </summary>
 Download the [pixi package manager](https://pixi.sh/latest/), this will manage the installation of cuda/pytorch/nerfstudio for you
 
 Clone and install DN-Splatter
@@ -82,14 +86,15 @@ To activate conda enviroment
 ```bash
 pixi shell
 ```
+</details>
+ 
 ## Usage
 This repo registers a new model called `dn-splatter` with various additional options:
 
 | Command | Description |
 |--------------------|---|
 | --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
-| --pipeline.model.sensor-depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
-| --pipeline.model.mono-depth-lambda (Float 0.2 recommended) | Regularizer weight for mono depth supervision |
+| --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
 | --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
 | --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
 | --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
@@ -102,7 +107,7 @@ For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ dat
 ```bash
 ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-depth-loss True \
-                 --pipeline.model.sensor-depth-lambda 0.2 \
+                 --pipeline.model.depth-lambda 0.2 \
                  --pipeline.model.use-normal-loss True \
                  --pipeline.model.use-normal-tv-loss True \
                  --pipeline.model.normal-supervision (mono/depth) \
@@ -112,9 +117,10 @@ ns-train dn-splatter --data PATH_TO_DATA \
 We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
 
 ### Supported Depth Losses
-We support various depth losses. For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
+To train with a specific depth loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
 
-To train with a specific loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
+For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
+
 
 ## Mesh
 To extract a mesh, run the following command:
@@ -122,6 +128,9 @@ To extract a mesh, run the following command:
 gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
 ```
 We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh o3dtsdf` for smaller object scale captures.
+
+<details close>
+<summary> Mesh algorithm details </summary>
 
 Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
 | gs-mesh |  Description | Requires normals?|
@@ -142,9 +151,12 @@ But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson f
 
 <img src="./assets/replica_poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
 
+</details>
+
 # Scripts
 
-### Generate pseudo ground truth normal maps
+<details close>
+<summary> Generate pseudo ground truth normal maps </summary>
 The `dn-splatter` model's predicted normals can be supervised with the gradient of rendered depth maps or by external monocular normal estimates using the flag `--pipeline.model.normal-supervision (mono/depth)`. To train with monocular normals, you need to use an external network to predict them.
 
 We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata) and from [DSINE](https://github.com/baegwangbin/DSINE). 
@@ -185,7 +197,9 @@ And to enable training with pretrained normals, add `--normals-from pretrained` 
 
 NOTE: different monocular networks can use varying camera coordinate systems for saving/visualizing predicted normals in the camera frame. We support both OpenGL and OpenCV coordinate systems. Each dataparser has a flag `--normal-format [opengl/opencv]` to distinguish between them. We render normals into the camera frame according to OpenCV color coding which is similar to Open3D. Some software might have different conventions. Omnidata normals are stored in OpenGL coordinates, but we convert them to OpenCV for consistency across the repo.
 
-### Convert dataset to COLMAP format
+</details>
+<details close>
+<summary> Convert dataset to COLMAP format </summary>
 
 If your dataset has no camera pose information, you can generate poses using COLMAP.
 
@@ -193,8 +207,10 @@ Convert a dataset of images to COLMAP format with
 ```bash
 python dn_splatter/scripts/convert_colmap.py --image-path [data_root/images] --use-gpu/--no-use-gpu
 ```
+</details>
 
-### Generate scale aligned mono-depth estimates
+<details close>
+<summary> Generate scale aligned mono-depth estimates </summary>
 
 If your dataset has no sensor depths, and you have a COLMAP processed dataset, we provide a script to generate scale aligned monocular depth estimates. Scale alignment refers to solving for the scale ambiquity between estimated monocular depths and the scale of your input COLMAP poses.
 
@@ -228,15 +244,20 @@ TypeError: expected size to be one of int or Tuple[int] or Tuple[int, int] or Tu
 ```
 Downgrading from Torch 2.1.2 to 2.0.1 solves the issue. 
 
-### Generate only mono depth estimates skipping SfM alignment:
+</details>
+
+<details close>
+<summary> Generate only mono depth estimates skipping SfM alignment </summary>
+
 To skip SfM alignment and just render monocular depths for your dataset, use the following script:
 ```bash
 python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
                                       --skip-colmap-to-depths  --skip_alignment \
                                       
 ```
+</details>
 
-## Custom Data
+## Custom RGB-D Smartphone (Android/iPhone) Data
 For casually captured RGB-D streams, consider using [SpectacularAI](https://www.spectacularai.com/mapping) SDK for iPhone/Android or Oak/RealSense/Kinect sensor streams. For LiDaR enabled smartphones, download the app from the Apple/Play store and capture your data.
 
 Once you have gathered the data, process the inputs into a Nerfstudio suitable format (calculate VIO poses and create a transforms.json file with poses and depth frames):
@@ -249,7 +270,7 @@ To train with the custom data:
 ```bash
 ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-depth-loss True \
-                 --pipeline.model.sensor-depth-lambda 0.2 \
+                 --pipeline.model.depth-lambda 0.2 \
                  --pipeline.model.use-normal-loss True \
                  --pipeline.model.use-normal-tv-loss True \
                  --pipeline.model.normal-supervision depth \
@@ -259,7 +280,7 @@ For other custom datasets, use the Nerfstudio [conventions](https://docs.nerf.st
 
 ## Datasets
 
-Other preprocessed datasets are supported by data parsers with the keywords `mushroom`, `replica`, `scannetpp`, `nrgbd`, `dtu`, `coolermap`.
+Other preprocessed datasets are supported by dataparsers with the keywords `mushroom`, `replica`, `scannetpp`, `nrgbd`, `dtu`, `coolermap`.
 To train with a dataset use the following:
 
 ```bash
@@ -276,7 +297,9 @@ Dataparsers have their own options, to see the full list use  ```ns-train dn-spl
   --load-pcd-normals  : [True/False] initialise gaussian scales/rotations based on estimated SfM normals.
 ```
 
-### COLMAP datasets
+### Supported dataparsers:
+<details close>
+<summary> COLMAP datasets </summary>
 For arbitrary COLMAP processed datasets, we expect the following directory structure
 
 ```
@@ -298,8 +321,12 @@ Use the `coolermap` dataparser with COLMAP datasets as follows:
 ```bash
 ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH]
 ```
+</details>
 
-### [MuSHRoom](https://github.com/TUTvision/MuSHRoom)
+<details close>
+<summary> MuSHRoom</summary>
+<a href="https://github.com/TUTvision/MuSHRoom">MuSHRoom</a>
+
 Support for Kinect and iPhone RGB-D trajectories.
 
 Download per-room datasets with `python dn_splatter/data/download_scripts/mushroom_download.py --room-name [name]`
@@ -311,7 +338,7 @@ Use the `mushroom` dataparser as follows:
 ```bash
 ns-train dn-splatter \
 --pipeline.model.use-depth-loss True \
---pipeline.model.sensor-depth-lambda 0.2 \
+--pipeline.model.depth-lambda 0.2 \
 --pipeline.model.use-normal-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode [kinect/iphone]
@@ -322,35 +349,43 @@ python dn_splatter/scripts/poses_to_colmap_sfm.py --transforms_path [path/transf
 
 ns-train dn-splatter \
 --pipeline.model.use-depth-loss True \
---pipeline.model.sensor-depth-lambda 0.2 \
+--pipeline.model.depth-lambda 0.2 \
 --pipeline.model.use-normal-loss True \
 --pipeline.model.use-normal-tv-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode iphone --create_pc_from_colmap True
 ```
+</details>
 
-### [Replica](https://github.com/facebookresearch/Replica-Dataset/)
+<details close>
+<summary> Replica </summary>
+<a href="https://github.com/facebookresearch/Replica-Dataset/">Replica</a>
+
 Download the dataset with `python dn_splatter/data/download_scripts/replica_download.py`
 
 Use the `replica` dataparser as follows:
 ```bash
 ns-train dn-splatter 
 --pipeline.model.use-depth-loss True \
---pipeline.model.sensor-depth-lambda 0.5 \
+--pipeline.model.depth-lambda 0.5 \
 --pipeline.model.use-normal-loss True \
 --pipeline.model.use-normal-tv-loss True \
 --pipeline.model.normal-supervision (mono/depth) \
 replica --data [DATASET_PATH] --sequence [office0/office1/office2/office3/office4/room0/room1/room2] 
 ```
+</details>
 
-### [ScanNet++](https://kaldir.vc.in.tum.de/scannetpp/)
+<details close>
+<summary> ScanNet++ </summary>
+<a href="https://kaldir.vc.in.tum.de/scannetpp/">ScanNet++</a>
+
 We use the following sequences: 
 
 ```
 8b5caf3398
 b20a261fdf
 ```
-First process the sequences accorrding to [ScanNet++ toolkit](https://github.com/scannetpp/scannetpp):
+First process the sequences according to the <a href="https://github.com/scannetpp/scannetpp">ScanNet++ toolkit</a>:
 
 Extract the undistorted images with:
 ```
@@ -367,21 +402,35 @@ Use the `scannetpp` dataparser as follows
 ns-train dn-splatter [OPTIONS] scannetpp --sequence [8b5caf3398/b20a261fdf] --data [DATASET_PATH] 
 ```
 
-### [Neural-RGBD](https://github.com/dazinovic/neural-rgbd-surface-reconstruction)
+</details>
+
+<details close>
+<summary> Neural-RGBD </summary>
+<a href="https://github.com/dazinovic/neural-rgbd-surface-reconstruction">Neural-RGBD</a>
+
 Download with `python dn_splatter/data/download_scripts/nrgbd_download.py`
 
 ```bash
 ns-train dn-splatter [OPTIONS] nrgbd --sequence whiteroom
 ```
-### [DTU](https://roboimagedata.compute.dtu.dk/?page_id=36)
+</details>
+
+<details close>
+<summary> DTU </summary>
+<a href="https://roboimagedata.compute.dtu.dk/?page_id=36">DTU</a>
+
 Download with `python dn_splatter/data/download_scripts/dtu_download.py`
 
 ```bash
 ns-train dn-splatter gsdf --sequence scan65 --data [DATASET_PATH] 
 ```
+</details>
 
-### [Tanks and Temples](https://www.tanksandtemples.org)
-First download the [advanced scenes](https://drive.google.com/file/d/0B-ePgl6HF260UXlhWDBiNVZvdk0/view?usp=sharing&resourcekey=0-eliRKXsZ8_vZ7KELO7oPgQ) from the official website.
+<details close>
+<summary> Tanks and Temples </summary>
+<a href="https://www.tanksandtemples.org">Tanks and Temples</a>
+
+First download the <a href="https://drive.google.com/file/d/0B-ePgl6HF260UXlhWDBiNVZvdk0/view?usp=sharing&resourcekey=0-eliRKXsZ8_vZ7KELO7oPgQ">advanced scenes</a> from the official website.
 
 We extract colmap poses with from the following
 ```
@@ -391,12 +440,14 @@ We extract colmap poses with from the following
 ```bash
 ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH] 
 ```
+</details>
+<br>
 
 # Evaluation
 
 Please see `dn_splatter/eval/eval_instructions.md` for more details.
 
-To run DN-Splatter on an entire dataset of sequences, you can use the `dn_splatter/eval/batch_run.py` script.
+To run DN-Splatter on an entire dataset of sequences (potentially in parallel with multi-GPU cluster), you can use the `dn_splatter/eval/batch_run.py` script.
 
 For evaluating rgb, depth, and pointcloud metrics (optional), run the following command:
 ```bash
