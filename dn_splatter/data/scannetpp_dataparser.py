@@ -15,7 +15,6 @@ from typing import Literal, Type
 import numpy as np
 import open3d as o3d
 import torch
-from dn_splatter.scripts.depth_to_normal import DepthToNormal
 from dn_splatter.data.scannetpp_utils.pointcloud_utils import generate_iPhone_pointcloud
 from dn_splatter.scripts.align_depth import ColmapToAlignedMonoDepths
 from dn_splatter.scripts.depth_from_pretrain import depth_from_pretrain
@@ -53,8 +52,6 @@ class ScanNetppDataParserConfig(ColmapDataParserConfig):
     """Whether input depth maps are Euclidean distances (or z-distances)."""
     load_depths: bool = True
     """Whether to load depth maps"""
-    load_depth_confidence_masks: bool = False
-    """Whether to load depth confidence masks"""
     mono_pretrain: Literal["zoe"] = "zoe"
     """Which mono depth pretrain model to use."""
     load_normals: bool = True
@@ -419,7 +416,6 @@ class ScanNetpp(ColmapDataParser):
         metadata.update({"depth_mode": self.config.depth_mode})
         metadata.update({"is_euclidean_depth": self.config.is_euclidean_depth})
         metadata.update({"load_depths": self.config.load_depths})
-        metadata.update({"load_confidence": self.config.load_depth_confidence_masks})
 
         if self.config.depth_mode in ["mono", "all"]:
             self.depth_save_dir = self.input_folder / Path("mono_depth")
@@ -487,18 +483,6 @@ class ScanNetpp(ColmapDataParser):
                 }
             )
 
-        if self.config.load_depth_confidence_masks:
-            self.confidence_save_dir = self.input_folder / Path("depth_normals_mask")
-            if not (self.confidence_save_dir).exists():
-                CONSOLE.log(
-                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(self.confidence_save_dir)}"
-                )
-                DepthToNormal(
-                    data_dir=self.input_folder, transforms_name="transforms.json"
-                ).main()
-            confidence_filenames = self.get_confidence_filepaths()
-            metadata.update({"confidence_filenames": confidence_filenames})
-
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
@@ -519,11 +503,6 @@ class ScanNetpp(ColmapDataParser):
         """Helper to load depth paths"""
         depth_list = natsorted(glob.glob(f"{self.depth_save_dir}/*_aligned.npy"))
         return depth_list
-
-    def get_confidence_filepaths(self):
-        """Helper to load confidence paths"""
-        confidence_list = natsorted(glob.glob(f"{self.confidence_save_dir}/*.jpg"))
-        return confidence_list
 
     def _load_iphone_3D_points(
         self, ply_file_path: Path, transform_matrix: torch.Tensor, scale_factor: float
