@@ -28,7 +28,6 @@ from dn_splatter.data.mushroom_utils.reference_depth_download import (
     download_reference_depth,
 )
 from dn_splatter.scripts.depth_from_pretrain import depth_from_pretrain
-from dn_splatter.scripts.depth_to_normal import DepthToNormal
 from dn_splatter.scripts.normals_from_pretrain import (
     NormalsFromPretrained,
     normals_from_depths,
@@ -82,8 +81,6 @@ class MushroomDataParserConfig(DataParserConfig):
     """Whether input depth maps are Euclidean distances (or z-distances)."""
     load_depths: bool = True
     """Whether to load depth maps"""
-    load_depth_confidence_masks: bool = False
-    """Whether to load depth confidence masks"""
     load_normals: bool = True
     """Set to true to load normal maps"""
     normal_format: Literal["opencv", "opengl"] = "opengl"
@@ -177,19 +174,6 @@ class MushroomDataParser(DataParser):
             inds = np.argsort([int(fname.stem) for fname in short_fnames])
         short_frames = [short_meta["frames"][ind] for ind in inds]
 
-        if self.config.load_depth_confidence_masks:
-            long_data_dir = self.config.data / self.config.mode / "long_capture"
-            short_data_dir = self.config.data / self.config.mode / "short_capture"
-            if not (long_data_dir / "depth_normals_mask").exists():
-                CONSOLE.log(
-                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(long_data_dir / 'depth_normals_mask')}"
-                )
-                DepthToNormal(data_dir=long_data_dir).main()
-            if not (short_data_dir / "depth_normals_mask").exists():
-                CONSOLE.log(
-                    f"[yellow]Could not find depth confidence masks, trying to generate them into {str(short_data_dir / 'depth_normals_mask')}"
-                )
-                DepthToNormal(data_dir=short_data_dir).main()
         (
             return_long_filenames,
             long_poses,
@@ -211,7 +195,6 @@ class MushroomDataParser(DataParser):
             width_fixed,
             distort_fixed,
             self.config.use_faro_scanner_depths,
-            self.config.load_depth_confidence_masks,
         )
         (
             return_short_filenames,
@@ -234,7 +217,6 @@ class MushroomDataParser(DataParser):
             width_fixed,
             distort_fixed,
             self.config.use_faro_scanner_depths,
-            self.config.load_depth_confidence_masks,
         )
         long_filenames = return_long_filenames["image"]
         short_filenames = return_short_filenames["image"]
@@ -246,13 +228,8 @@ class MushroomDataParser(DataParser):
         image_filenames = long_filenames + short_filenames
         mask_filenames = long_mask_filenames + short_mask_filenames
         depth_filenames = long_depth_filenames + short_depth_filenames
-        if self.config.load_depth_confidence_masks:
-            confidence_filenames = (
-                return_long_filenames["confidence"]
-                + return_short_filenames["confidence"]
-            )
-        else:
-            confidence_filenames = []
+
+        confidence_filenames = []
         poses = long_poses + short_poses
         fx = long_fx + short_fx
         fy = long_fy + short_fy
@@ -367,13 +344,6 @@ class MushroomDataParser(DataParser):
         depth_filenames = (
             [depth_filenames[i] for i in indices] if len(depth_filenames) > 0 else []
         )
-
-        if self.config.load_depth_confidence_masks:
-            confidence_filenames = (
-                [confidence_filenames[i] for i in indices]
-                if len(confidence_filenames) > 0
-                else []
-            )
 
         idx_tensor = torch.tensor(indices, dtype=torch.long)
         poses = poses[idx_tensor]
@@ -725,10 +695,7 @@ class MushroomDataParser(DataParser):
 
         metadata.update({"load_normals": self.config.load_normals})
 
-        metadata.update({"load_confidence": self.config.load_depth_confidence_masks})
-
-        if self.config.load_depth_confidence_masks:
-            metadata.update({"confidence_filenames": confidence_filenames})
+        metadata.update({"load_confidence": False})
 
         self.scale_factor = scale_factor
         self.transform_matrix = transform_matrix
@@ -936,7 +903,6 @@ class MushroomDataParser(DataParser):
         width_fixed,
         distort_fixed,
         use_faro_scanner_depths,
-        load_depth_confidence_masks,
     ):
         fx = []
         fy = []
@@ -950,8 +916,6 @@ class MushroomDataParser(DataParser):
         mask_filenames = []
         depth_filenames = []
         poses = []
-        if load_depth_confidence_masks:
-            confidence_filenames = []
 
         for frame in frames:
             filepath = Path(frame["file_path"])
@@ -1007,32 +971,11 @@ class MushroomDataParser(DataParser):
                     depth_filepath, data_dir, downsample_folder_prefix="depths_"
                 )
                 depth_filenames.append(depth_fname)
-            if load_depth_confidence_masks:
-                confidence_filepath = Path(
-                    frame["depth_file_path"]
-                    .replace("depth", "depth_normals_mask")
-                    .replace("png", "jpg")
-                )
-                confidence_fname = self._get_fname(
-                    confidence_filepath,
-                    data_dir,
-                    downsample_folder_prefix="confidence_",
-                )
-                confidence_filenames.append(confidence_fname)
-
-        if load_depth_confidence_masks:
-            return_filenames = {
-                "image": image_filenames,
-                "mask": mask_filenames,
-                "depth": depth_filenames,
-                "confidence": confidence_filenames,
-            }
-        else:
-            return_filenames = {
-                "image": image_filenames,
-                "mask": mask_filenames,
-                "depth": depth_filenames,
-            }
+        return_filenames = {
+            "image": image_filenames,
+            "mask": mask_filenames,
+            "depth": depth_filenames,
+        }
 
         return (
             return_filenames,

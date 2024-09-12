@@ -231,8 +231,6 @@ def train_scene(
                     "opengl",
                     "--mode",
                     "iphone",
-                    "--load-depth-confidence-masks",
-                    str(False),
                     "--num-init-points",
                     str(config.num_init_points),
                 ]
@@ -249,8 +247,6 @@ def train_scene(
                     str(config.load_pcd_normals),
                     "--normal-format",
                     "opengl",
-                    "--load-depth-confidence-masks",
-                    str(False),
                 ]
             )
         elif dataset == "replica":
