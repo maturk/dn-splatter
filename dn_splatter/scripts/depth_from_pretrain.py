@@ -468,5 +468,5 @@ def depth_from_pretrain(
 
 
 if __name__ == "__main__":
-    tyro.cli(depth_from_pretrain)
-    # tyro.cli(DepthsFromPretrained).main()
+    # tyro.cli(depth_from_pretrain)
+    tyro.cli(DepthsFromPretrained).main()

@@ -13,7 +13,7 @@ class PosesToColmap:
     def __init__(
         self,
         transforms_path: str,
-        run_colmap: bool = False,
+        run_colmap: bool = True,
         assume_colmap_world_coordinate_convention: bool = True,
     ):
         self.transforms_path = transforms_path
