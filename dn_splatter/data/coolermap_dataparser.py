@@ -41,7 +41,7 @@ class CoolerMapDataParserConfig(ColmapDataParserConfig):
     """Which depth data to load"""
     is_euclidean_depth: bool = False
     """Whether input depth maps are Euclidean distances (or z-distances)."""
-    load_depths: bool = False
+    load_depths: bool = True
     """Whether to load depth maps"""
     mono_pretrain: Literal["zoe"] = "zoe"
     """Which mono depth pretrain model to use."""
@@ -93,6 +93,14 @@ class CoolerMapDataParser(ColmapDataParser):
         depth_paths = natsorted(
             glob.glob(f"{self.config.data}/mono_depth/*_aligned.npy")
         )
+        if not depth_paths:
+            CONSOLE.log("Could not find _aligned.npy depths, trying *.npy")
+            depth_paths = natsorted(glob.glob(f"{self.config.data}/mono_depth/*.npy"))
+        if depth_paths:
+            CONSOLE.log("Found depths ending in *.npy")
+        else:
+            CONSOLE.log("Could not find depths, quitting.")
+            quit()
         return depth_paths
 
     def get_normal_filepaths(self):
@@ -150,6 +158,7 @@ class CoolerMapDataParser(ColmapDataParser):
         """
 
         depth_filenames = self.get_depth_filepaths()
+        assert len(depth_filenames) == len(image_filenames)
         poses = [
             pose for img, pose in natsorted(zip(image_filenames, poses), lambda x: x[0])
         ]
