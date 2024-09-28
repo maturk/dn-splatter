@@ -465,8 +465,10 @@ python dn_splatter/eval/eval_mesh_mushroom_vis_cull.py --gt_mesh_path [GT_Mesh_P
 
 To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run the following command:
 ```bash
-python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pred-mesh-path [Pred_Mesh_Path]
+python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pred-mesh-path [Pred_Mesh_Path] --transformation_file [Path_to_transform_file] --dataset_path [Dataset path]
 ```
+--transformation_file path is the path of the `transform.json` generated when training scannetpp [here](https://github.com/maturk/dn-splatter/blob/367c36dbcf1426ba21c1b58045346efdfebc4242/dn_splatter/data/scannetpp_dataparser.py#L251).
+--dataset_path is the path to the dataset folder, e.g. `datasets/scannetpp/data/b20a261fdf/iphone`
 
 # Acknowledgements
 I want to thank [Tobias Fischer](https://tobiasfshr.github.io), [Songyou Peng](https://pengsongyou.github.io) and [Philipp Lindenberger](https://github.com/Phil26AT) for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the [Nerfstudio](https://github.com/nerfstudio-project/nerfstudio) team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.
