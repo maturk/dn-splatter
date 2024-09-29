@@ -9,6 +9,7 @@ import os
 from copy import deepcopy
 from pathlib import Path
 from typing import Optional
+from tqdm import tqdm
 
 import cv2
 import numpy as np
@@ -16,11 +17,9 @@ import open3d as o3d
 import torch
 import trimesh
 import tyro
+import pyrender
 from matplotlib import pyplot as plt
 from PIL import Image
-from pytorch3d import transforms as py3d_transform
-from pytorch3d.renderer import MeshRasterizer, PerspectiveCameras, RasterizationSettings
-from pytorch3d.structures import Meshes
 from scipy.spatial import cKDTree
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,52 +36,28 @@ def trimesh_to_open3d(tri_mesh):
     return mesh
 
 
-def render_depth_maps(mesh, poses, H, W, K, far=10.0):
-    vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
-    faces = torch.tensor(mesh.faces, dtype=torch.int64)
-    mesh = Meshes(verts=[vertices], faces=[faces]).to(device)
+def render_depth_maps(mesh, poses, H, W, K, far=10.0, debug=False):
+    mesh = pyrender.Mesh.from_trimesh(mesh)
+    scene = pyrender.Scene()
+    scene.add(mesh)
+    camera = pyrender.IntrinsicsCamera(fx=K[0, 0], fy=K[1, 1], cx=K[0, 2], cy=K[1, 2], znear=0.01, zfar=far)
+    camera_node = pyrender.Node(camera=camera, matrix=np.eye(4))
+    scene.add_node(camera_node)
+    renderer = pyrender.OffscreenRenderer(W, H)
+    render_flags = pyrender.RenderFlags.OFFSCREEN | pyrender.RenderFlags.DEPTH_ONLY
 
-    Rz_rot = py3d_transform.euler_angles_to_matrix(
-        torch.tensor([0.0, 0.0, math.pi]), convention="XYZ"
-    ).cuda()
-    K = K.unsqueeze(0)
-    focal_length = torch.stack([K[:, 0, 0], K[:, 1, 1]], dim=-1)
-    principal_point = K[:, :2, 2]
-    image_size = torch.tensor([[H, W]]).cuda()
     depth_maps = []
-    for i, c2w in enumerate(poses):
-        c2w = np.linalg.inv(c2w)
-        c2w = torch.tensor(c2w).cuda().float()
+    for i, pose in enumerate(tqdm(poses, desc="Rendering depth maps")):
+        scene.set_pose(camera_node, pose)
+        depth = renderer.render(scene, render_flags)
 
-        R = c2w[:3, :3]
-        T = c2w[:3, 3]
+        if debug:
+            global_max = np.max(depth)
+            normalized_images = np.uint8((depth / global_max) * 255)
+            colormapped_images = cv2.applyColorMap(normalized_images, cv2.COLORMAP_INFERNO)
+            cv2.imwrite("depth_map_" + str(i) + ".png", colormapped_images)
+        depth_maps.append(depth)
 
-        R2 = (Rz_rot @ R).permute(-1, -2)
-        T2 = Rz_rot @ T
-        cameras = PerspectiveCameras(
-            focal_length=focal_length,
-            principal_point=principal_point,
-            R=R2.unsqueeze(0),
-            T=T2.unsqueeze(0),
-            image_size=image_size,
-            in_ndc=False,
-            device=device,
-        )
-
-        raster_settings = RasterizationSettings(
-            image_size=(H, W), blur_radius=0.0, faces_per_pixel=1
-        )
-
-        rasterizer = MeshRasterizer(cameras=cameras, raster_settings=raster_settings)
-        render_img = rasterizer(mesh.to(device)).zbuf[0, ..., 0]
-        render_img = render_img.cpu().numpy()
-
-        global_max = np.max(render_img)
-        normalized_images = np.uint8((render_img / global_max) * 255)
-        colormapped_images = cv2.applyColorMap(normalized_images, cv2.COLORMAP_INFERNO)
-
-        render_img[render_img < 0] = 0
-        depth_maps.append(render_img)
     return depth_maps
 
 
@@ -99,8 +74,8 @@ def cull_from_one_pose(
 ):
     c2w = deepcopy(pose)
     # to OpenCV
-    # c2w[:3, 1] *= -1
-    # c2w[:3, 2] *= -1
+    c2w[:3, 1] *= -1
+    c2w[:3, 2] *= -1
     w2c = np.linalg.inv(c2w)
     rotation = w2c[:3, :3]
     translation = w2c[:3, 3]
@@ -148,9 +123,7 @@ def get_grid_culling_pattern(
 
     obs_mask = np.zeros(points.shape[0])
     invalid_mask = np.zeros(points.shape[0])
-    for i, pose in enumerate(poses):
-        if verbose:
-            print("Processing pose " + str(i + 1) + " out of " + str(len(poses)))
+    for i, pose in enumerate(tqdm(poses, desc="Getting grid culling pattern")):
         rendered_depth = (
             rendered_depth_list[i] if rendered_depth_list is not None else None
         )
@@ -237,7 +210,7 @@ def cull_mesh(
             depth_gt = cv2.imread(str(depth_path), cv2.IMREAD_UNCHANGED)
             c2w = np.array(frame["transform_matrix"]).astype(np.float32)
             c2w = np.concatenate([c2w, np.array([[0, 0, 0, 1]])], axis=0)
-            c2w[0:3, 1:3] *= -1
+            # c2w[0:3, 1:3] *= -1
             depth_gt = np.array(depth_gt) / 1000.0
             depth_gt = cv2.resize(depth_gt, (W, H), interpolation=cv2.INTER_NEAREST)
         elif dataset == "replica":
