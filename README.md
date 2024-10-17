@@ -47,6 +47,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
+- 17.10.2024: [FusionSense](https://github.com/ai4ce/FusionSense) improves DN-Splatter in sparse settings for robotic tactile applications! 🚀
 - 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
 - 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
