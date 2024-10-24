@@ -346,7 +346,7 @@ ns-train dn-splatter \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode [kinect/iphone]
 ```
-To run mushroom iPhone sequence with colmap SFM initialized point cloud:
+To get MuSHRoom iPhone sequence with colmap SFM initialized point cloud:
 ```bash
 python dn_splatter/scripts/poses_to_colmap_sfm.py --transforms_path [path/transformations_colmap.json] --run_colmap
 
@@ -358,6 +358,7 @@ ns-train dn-splatter \
 --pipeline.model.normal-supervision (mono/depth) \
 mushroom --data [DATASET_PATH] --mode iphone --create_pc_from_colmap True
 ```
+For easy use, we provide the result of the converted COLMAP pose and point cloud in [zenodo](https://zenodo.org/records/13986996).
 </details>
 
 <details close>
