@@ -129,7 +129,7 @@ To extract a mesh, run the following command:
 ```bash
 gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
 ```
-We reccommend `gs-mesh dn` for large room scale scenes and `gs-mesh o3dtsdf` for smaller object scale captures.
+We reccommend using `gs-mesh o3dtsdf`.
 
 <details close>
 <summary> Mesh algorithm details </summary>
@@ -403,7 +403,12 @@ python -m iphone.prepare_iphone_data iphone/configs/prepare_iphone_data.yml
 
 Use the `scannetpp` dataparser as follows
 ```bash
-ns-train dn-splatter [OPTIONS] scannetpp --sequence [8b5caf3398/b20a261fdf] --data [DATASET_PATH] 
+ns-train dn-splatter  \
+--pipeline.model.use-depth-loss True \
+--pipeline.model.depth-lambda 0.2 \
+--pipeline.model.use-normal-loss True \
+--pipeline.model.use-normal-tv-loss True \ 
+scannetpp --sequence [8b5caf3398/b20a261fdf] --data [DATASET_PATH] 
 ```
 
 </details>
