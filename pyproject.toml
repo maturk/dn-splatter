@@ -26,6 +26,7 @@ include = ["dn_splatter*"]
 
 [project.entry-points.'nerfstudio.method_configs']
 dn_splatter = 'dn_splatter.dn_config:dn_splatter'
+ags_mesh = 'dn_splatter.dn_config:ags_mesh'
 dn_splatter_big = 'dn_splatter.dn_config:dn_splatter_big'
 #g-nerfacto = 'dn_splatter.eval.eval_configs:gnerfacto'
 #g-depthfacto = 'dn_splatter.eval.eval_configs:gdepthfacto'

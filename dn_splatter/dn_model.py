@@ -20,6 +20,8 @@ from dn_splatter.metrics import DepthMetrics, NormalMetrics, RGBMetrics
 from dn_splatter.regularization_strategy import (
     DNRegularization,
 )
+from dn_splatter.regularization_strategy import AGSMeshRegularization, DNRegularization
+
 from dn_splatter.utils.camera_utils import get_colored_points_from_depth, project_pix
 from dn_splatter.utils.knn import knn_sk
 from dn_splatter.utils.normal_utils import normal_from_depth_image
@@ -55,8 +57,8 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     _target: Type = field(default_factory=lambda: DNSplatterModel)
 
     ### DNSplatter configs ###
-    regularization_strategy: Literal["dn-splatter"] = "dn-splatter"
-
+    regularization_strategy: Literal["dn-splatter", "ags-mesh"] = "dn-splatter"
+    """Depth and normal regularization strategy"""
     use_depth_loss: bool = False
     """Enable depth loss while training"""
     depth_loss_type: DepthLossType = DepthLossType.EdgeAwareLogL1
@@ -79,7 +81,7 @@ class DNSplatterModelConfig(SplatfactoModelConfig):
     """Cosine similarity loss"""
     use_normal_tv_loss: bool = True
     """Use TV loss on predicted normals."""
-    normal_supervision: Literal["mono", "depth"] = "depth"
+    normal_supervision: Literal["mono", "depth"] = "mono"
     """Type of supervision for normals. Mono for monocular normals and depth for pseudo normals from depth maps."""
     normal_lambda: float = 0.1
     """Regularizer for normal loss"""
@@ -246,6 +248,8 @@ class DNSplatterModel(SplatfactoModel):
 
         if self.config.regularization_strategy == "dn-splatter":
             self.regularization_strategy = DNRegularization()
+        elif self.config.regularization_strategy == "ags-mesh":
+            self.regularization_strategy = AGSMeshRegularization()
         else:
             raise NotImplementedError
 
@@ -638,6 +642,8 @@ class DNSplatterModel(SplatfactoModel):
             mono_depth_gt = self.get_gt_img(batch["mono_depth"])
         if "normal" in batch:
             batch["normal"] = self.get_gt_img(batch["normal"])
+        if "confidence" in batch:
+            confidence = 1 - self.get_gt_img(batch["confidence"]) / 255.0
 
         if "mask" in batch:
             # batch["mask"] : [H, W, 1]
@@ -679,7 +685,10 @@ class DNSplatterModel(SplatfactoModel):
             )
             gt_normal = (1 + gt_normal) / 2
 
-        additional_data = {"scales": self.scales, "gt_img": gt_img}
+        additional_data = {
+            "scales": self.scales,
+            "gt_img": gt_img,
+        }
 
         depth_gt = None
         if sensor_depth_gt is not None:
@@ -699,6 +708,17 @@ class DNSplatterModel(SplatfactoModel):
                 gt_depth=depth_gt,
                 pred_normal=pred_normal,
                 gt_normal=gt_normal,
+                **additional_data,
+            )
+        elif self.config.regularization_strategy == "ags-mesh":
+            regularization_strategy_loss = self.regularization_strategy(
+                step=self.step,
+                pred_depth=depth_out,
+                gt_depth=depth_gt,
+                confidence_map=confidence,
+                surf_normal=(2 * surface_normal - 1).permute(2, 0, 1),
+                gt_normal=(2 * gt_normal - 1).permute(2, 0, 1),
+                pred_normal=(2 * pred_normal - 1).permute(2, 0, 1),
                 **additional_data,
             )
 

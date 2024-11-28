@@ -2,11 +2,11 @@
 
 ### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
 
-This repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
+This repo implements research papers regarding depth and normal supervision for Gaussian splatting models and several mesh extraction scripts.
 <p align="center">
     <img src="./assets/pipeline_crop.jpg" alt="Pipeline" width="600"/>
 </p>
-Demo:
+Quick demo:
 
 https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
 <!-- CONTENTS -->
@@ -47,6 +47,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
+- 29.11.2024: We release [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/) which improves mesh reconstruction using a novel depth and normal filtering strategy. We release code for Splatfacto based AGS-Mesh model and 2DGS based AGS-Mesh model. Please see the readme for more details.
 - 17.10.2024: [FusionSense](https://github.com/ai4ce/FusionSense) improves DN-Splatter in sparse settings for robotic tactile applications! 🚀
 - 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
@@ -90,7 +91,7 @@ pixi shell
 </details>
  
 ## Usage
-This repo registers a new model called `dn-splatter` with various additional options:
+This repo registers a model called `dn-splatter` and `ags-mesh` with various additional options:
 
 | Command | Description |
 |--------------------|---|
@@ -99,20 +100,31 @@ This repo registers a new model called `dn-splatter` with various additional opt
 | --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
 | --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
 | --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
-| --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
+| --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'mono' default.|
 | --pipeline.model.two-d-gaussians (True/False)| Encourage 2D gaussians |
 
 Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
+## Model overview
+`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](TODO) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
+
 ## Recommended settings:
 For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
+
 ```bash
+# to run the dn-splatter model
 ns-train dn-splatter --data PATH_TO_DATA \
                  --pipeline.model.use-depth-loss True \
                  --pipeline.model.depth-lambda 0.2 \
                  --pipeline.model.use-normal-loss True \
                  --pipeline.model.use-normal-tv-loss True \
-                 --pipeline.model.normal-supervision (mono/depth) \
+                 --pipeline.model.normal-supervision (mono/depth)
+# to run the ags-mesh model
+ns-train ags-mesh --data PATH_TO_DATA \
+                 --pipeline.model.use-depth-loss True \
+                 --pipeline.model.depth-lambda 0.2 \
+                 --pipeline.model.use-normal-loss True \
+                 --pipeline.model.normal-supervision (mono/depth)
 ```
 
 ### dn-splatter-big:
@@ -146,12 +158,6 @@ Export a mesh with the `gs-mesh --help` command. The following mesh exporters ar
 Use the `--help` command with each method to see more useful options and settings.
 
 For very small object captures, TSDF works well with 0.004 voxel size and 0.02 SDF trunc distance.
-
-<img src="./assets/poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
-
-But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson for more robust results with little hyperparameter tuning.
-
-<img src="./assets/replica_poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
 
 </details>
 <br>
@@ -481,16 +487,18 @@ python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pr
 I want to thank [Tobias Fischer](https://tobiasfshr.github.io), [Songyou Peng](https://pengsongyou.github.io) and [Philipp Lindenberger](https://github.com/Phil26AT) for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the [Nerfstudio](https://github.com/nerfstudio-project/nerfstudio) team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.
 
 # Citation
-If you find this work useful in your research, consider citing it:
+If you find this work useful in your research, consider citing DN-Splatter:
 ```
-@misc{turkulainen2024dnsplatter,
+@InProceedings{turkulainen2024dnsplatter,
         title={DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing}, 
         author={Matias Turkulainen and Xuqian Ren and Iaroslav Melekhov and Otto Seiskari and Esa Rahtu and Juho Kannala},
-        year={2024},
-        eprint={2403.17822},
-        archivePrefix={arXiv},
-        primaryClass={cs.CV}
+        booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+        year={2025}
 }
+```
+and AGS-Mesh:
+```
+TODO
 ```
 
 # Contributing

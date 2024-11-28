@@ -197,3 +197,131 @@ class DNRegularization(RegularizationStrategy):
         # loss to minimise gaussian scale corresponding to normal direction
         scale_loss = torch.min(torch.exp(scales), dim=1, keepdim=True)[0].mean()
         return scale_loss
+
+
+class AGSMeshRegularization(RegularizationStrategy):
+    """Regularization strategy as proposed in AGS-Mesh
+
+    This consists of an a depth and normal filtering strategy.
+    """
+
+    def __init__(
+        self,
+        depth_tolerance: float = 0.1,
+        depth_loss_type: Optional[DepthLossType] = DepthLossType.EdgeAwareLogL1,
+        depth_lambda: float = 0.2,
+        normal_lambda: float = 0.1,
+        normal_mask_steps: int = 15000,
+        depth_mask_steps: int = 7000,
+    ):
+        super().__init__()
+        self.depth_tolerance = depth_tolerance
+        self.depth_loss_type = depth_loss_type
+        self.depth_loss = DepthLoss(self.depth_loss_type)
+        self.depth_lambda = depth_lambda
+
+        self.normal_loss_type: NormalLossType = NormalLossType.L1
+        self.normal_loss = NormalLoss(self.normal_loss_type)
+        self.normal_smooth_loss_type: NormalLossType = NormalLossType.Smooth
+        self.normal_smooth_loss = NormalLoss(self.normal_smooth_loss_type)
+        self.normal_lambda = normal_lambda
+        self.normal_mask_steps = normal_mask_steps
+        self.depth_mask_steps = depth_mask_steps
+
+        self.step = 0
+
+    def get_loss(
+        self,
+        step,
+        pred_depth,
+        gt_depth,
+        surf_normal,
+        gt_normal,
+        pred_normal,
+        confidence_map,
+        **kwargs,
+    ):
+        """Regularization loss"""
+        depth_loss = self.get_depth_loss(
+            step=step,
+            pred_depth=pred_depth,
+            gt_depth=gt_depth,
+            confidence_map=confidence_map,
+            **kwargs,
+        )
+        normal_loss = self.get_normal_loss(step, surf_normal, gt_normal, pred_normal)
+        scales = kwargs["scales"]
+        scale_loss = self.get_scale_loss(scales=scales)
+        return depth_loss + normal_loss + scale_loss
+
+    def get_depth_loss(self, step, pred_depth, gt_depth, confidence_map, **kwargs):
+        """Depth loss"""
+        depth_loss = 0
+        depth_mask = gt_depth > self.depth_tolerance
+        if step < 7000:
+            if self.depth_loss_type == DepthLossType.EdgeAwareLogL1:
+                gt_img = kwargs["gt_img"]
+                depth_loss = (
+                    self.depth_loss(pred_depth, gt_depth.float(), gt_img, depth_mask)
+                    * self.depth_lambda
+                )
+
+            else:
+                depth_loss = (
+                    self.depth_loss(pred_depth[depth_mask], gt_depth[depth_mask])
+                    * self.depth_lambda
+                )
+        elif step >= 7000:
+            gt_depth = torch.where(confidence_map > 0, gt_depth, 0).cuda()
+            depth_mask = gt_depth > self.depth_tolerance
+            if self.depth_loss_type == DepthLossType.EdgeAwareLogL1:
+                gt_img = kwargs["gt_img"]
+                depth_loss = (
+                    self.depth_loss(pred_depth, gt_depth.float(), gt_img, depth_mask)
+                    * self.depth_lambda
+                )
+
+            else:
+                depth_loss = (
+                    self.depth_loss(pred_depth[depth_mask], gt_depth[depth_mask])
+                    * self.depth_lambda
+                )
+
+        return depth_loss
+
+    def get_normal_loss(self, step, surf_normal, gt_normal, pred_normal):
+        """Normal loss"""
+
+        # normal lambda
+        lambda_normal_l1 = self.normal_lambda if step > 7000 else 0.0
+
+        # normal confidence
+        normal_diff = mean_angular_error(surf_normal, gt_normal)
+        normal_confidence = 1 - (normal_diff > 0.1).float()
+        normal_dilated_edges = find_edges(gt_normal)
+        if step < self.normal_mask_steps:
+            normal_l1 = (
+                self.normal_loss(
+                    surf_normal[~normal_dilated_edges],
+                    gt_normal[~normal_dilated_edges],
+                )
+                * lambda_normal_l1
+            )
+        else:
+            normal_confidence = (normal_confidence > 0).squeeze(0)
+            normal_l1 = (
+                self.normal_loss(
+                    surf_normal[:, normal_confidence],
+                    gt_normal[:, normal_confidence],
+                )
+                * lambda_normal_l1
+            )
+        pred_normal_l1 = self.normal_loss(pred_normal, gt_normal) * lambda_normal_l1
+        normal_l1 += pred_normal_l1
+        return normal_l1
+
+    def get_scale_loss(self, scales):
+        """Scale loss"""
+        # loss to minimise gaussian scale corresponding to normal direction
+        scale_loss = torch.min(torch.exp(scales), dim=1, keepdim=True)[0].mean()
+        return scale_loss
