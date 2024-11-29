@@ -1,6 +1,9 @@
 # DN-Splatter + AGS-Mesh
 
+DN-Splatter:
 ### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
+AGS-Mesh:
+### <p align="center">[🌐Project Page](https://xuqianren.github.io/ags_mesh_website/) | [🖨️ArXiv]() </p>
 
 This repo implements research papers regarding depth and normal supervision for Gaussian splatting models and several mesh extraction scripts.
 ### DN-Splatter:

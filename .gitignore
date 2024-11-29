@@ -172,3 +172,4 @@ nerfstudio
 dn_splatter/__pycache__
 # pixi environments
 .pixi
+dn_splatter
