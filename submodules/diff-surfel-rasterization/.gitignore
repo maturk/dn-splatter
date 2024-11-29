@@ -1,0 +1,7 @@
+build/
+diff_surfel_rasterization.egg-info/
+dist/
+*.so
+.vscode
+**__pycache__**
+*.pyc
