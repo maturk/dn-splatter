@@ -4,11 +4,11 @@ This repo implements research papers ([DN-Splatter](https://maturk.github.io/dn-
 ### Pipelines:
 <p align="center">
     <figure style="display: inline-block; text-align: center; margin: 10px;">
-        <img src="./assets/pipeline_crop.jpg" alt="DN-Splatter Pipeline" height="300"/>
+        <img src="./assets/pipeline_crop.jpg" alt="DN-Splatter Pipeline" height="250"/>
         <figcaption>DN-Splatter</figcaption>
     </figure>
     <figure style="display: inline-block; text-align: center; margin: 10px;">
-        <img src="./assets/pipeline_ags_mesh.png" alt="AGS-Mesh Pipeline" height="300"/>
+        <img src="./assets/pipeline_ags_mesh.png" alt="AGS-Mesh Pipeline" height="250"/>
         <figcaption>AGS-Mesh</figcaption>
     </figure>
 </p>
