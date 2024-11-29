@@ -1,21 +1,17 @@
 # DN-Splatter + AGS-Mesh
+This repo implements research papers ([DN-Splatter](https://maturk.github.io/dn-splatter/) and [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/)) for depth and normal supervision of Gaussian splatting models for improved novel-view synthesis using smartphone data (iPhones) and mesh reconstruction.
 
-DN-Splatter:
-### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
-AGS-Mesh:
-### <p align="center">[🌐Project Page](https://xuqianren.github.io/ags_mesh_website/) | [🖨️ArXiv]() </p>
-
-This repo implements research papers regarding depth and normal supervision for Gaussian splatting models and several mesh extraction scripts.
-### DN-Splatter:
+### Pipelines:
 <p align="center">
-    <img src="./assets/pipeline_crop.jpg" alt="Pipeline" width="600"/>
+    <figure style="display: inline-block; text-align: center; margin: 10px;">
+        <img src="./assets/pipeline_crop.jpg" alt="DN-Splatter Pipeline" height="300"/>
+        <figcaption>DN-Splatter</figcaption>
+    </figure>
+    <figure style="display: inline-block; text-align: center; margin: 10px;">
+        <img src="./assets/pipeline_ags_mesh.png" alt="AGS-Mesh Pipeline" height="300"/>
+        <figcaption>AGS-Mesh</figcaption>
+    </figure>
 </p>
-
-### AGS-Mesh:
-<p align="center">
-    <img src="./assets/pipeline_ags_mesh.png" alt="Pipeline" width="600"/>
-</p>
-
 
 Quick demo:
 
@@ -229,7 +225,7 @@ This repo registers a model called `dn-splatter` and `ags-mesh` with various add
 
 Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
-## Model overview
+## Model overviews
 `dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](TODO) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
 
 ## Recommended settings:
