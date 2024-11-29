@@ -1,504 +1,167 @@
-# DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing
+# AGS-Mesh: Adaptive Gaussian Splatting and Meshing with Geometric Priors for Indoor Room Reconstruction Using Smartphones
 
-### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
+### <p align="center">[🌐Project Page](https://github.com/XuqianRen/ags_mesh_website) | [🖨️ArXiv]() </p>
 
-This repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
+
 <p align="center">
-    <img src="./assets/pipeline_crop.jpg" alt="Pipeline" width="600"/>
+    <img src="assets/pipeline_ags_mesh.png" alt="Pipeline" width="600"/>
 </p>
-Demo:
 
-https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
-<!-- CONTENTS -->
-<details open="open" style='padding: 10px; border-radius:5px 30px 30px 5px; border-style: solid; border-width: 1px;'>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#installation">Installation</a>
-    </li>
-    <li>
-      <a href="#usage">Usage</a>
-    </li>
-     <li>
-      <a href="#mesh">Mesh Extraction</a>
-    </li>
-    <li>
-      <a href="#scripts">Scripts</a>
-    </li>
-    <li>
-      <a href="#datasets">Custom Datasets</a>
-    </li>
-    <li>
-      <a href="#datasets">Datasets</a>
-    </li>
-    <li>
-      <a href="#evaluation">Evaluation</a>
-    </li>
-    <li>
-      <a href="#acknowledgements">Acknowledgements</a>
-    </li>
-    <li>
-      <a href="#citation">Citation</a>
-    </li>
-    <li>
-      <a href="#developers">Developers</a>
-    </li>
-  </ol>
-</details>
-
-## Updates
-- 17.10.2024: [FusionSense](https://github.com/ai4ce/FusionSense) improves DN-Splatter in sparse settings for robotic tactile applications! 🚀
-- 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
-- 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
-- 16.04.2024: Support for [DSINE](https://github.com/baegwangbin/DSINE) monocular normal supervision.
-- 20.04.2024: `dn-splatter-big`: a variant featuring less aggressive Gaussian culling threshold, which leads to an increased number of Gaussians in the optimized scene.  On certain datasets, this can lead to better novel-view synthesis results.
 ## Installation
-<details close>
-<summary> Method 1. Using Conda and Pip</summary>
-    Follow installation instructions for [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html). This repo is compatible with a `nerfstudio` conda environment.
-
-    Clone and install DN-Splatter
-    ```bash
-    conda activate nerfstudio
-    git clone https://github.com/maturk/dn-splatter
-    cd dn_splatter/
-    pip install setuptools==69.5.1
-    pip install -e .
-    ```
-</details>
-
-<details close>
-<summary> Method 2. Using Pixi </summary>
-Download the [pixi package manager](https://pixi.sh/latest/), this will manage the installation of cuda/pytorch/nerfstudio for you
-
-Clone and install DN-Splatter
-```bash
-git clone https://github.com/maturk/dn-splatter
-cd dn_splatter/
-pixi install
-```
-
-To run an example
-```bash
-pixi run example
-```
-
-To activate conda enviroment
-```bash
-pixi shell
-```
-</details>
- 
-## Usage
-This repo registers a new model called `dn-splatter` with various additional options:
-
-| Command | Description |
-|--------------------|---|
-| --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
-| --pipeline.model.depth-loss-type (MSE, LogL1, HuberL1, L1, EdgeAwareLogL1, PearsonDepth) | Depth loss type |
-| --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
-| --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
-| --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
-| --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
-| --pipeline.model.two-d-gaussians (True/False)| Encourage 2D gaussians |
-
-Please check the dn_model.py for a full list of supported configs (some are only experimental).
-
-## Recommended settings:
-For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
-```bash
-ns-train dn-splatter --data PATH_TO_DATA \
-                 --pipeline.model.use-depth-loss True \
-                 --pipeline.model.depth-lambda 0.2 \
-                 --pipeline.model.use-normal-loss True \
-                 --pipeline.model.use-normal-tv-loss True \
-                 --pipeline.model.normal-supervision (mono/depth) \
-```
-
-### dn-splatter-big:
-We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
-
-### Supported Depth Losses
-To train with a specific depth loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
-
-For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
-
-
-## Mesh
-To extract a mesh, run the following command:
-```bash
-gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
-```
-We reccommend using `gs-mesh o3dtsdf`.
-
-<details close>
-<summary> Mesh algorithm details </summary>
-
-Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
-| gs-mesh |  Description | Requires normals?|
-|--------------------|--------------------------------------------------------------------|-|
-| gs-mesh dn         | Backproject depth and normal maps to Poisson                       | Yes|
-| gs-mesh tsdf       | TSDF Fusion algorithm                                              | No|
-| gs-mesh o3dtsdf    | TSDF Fusion algorithm used in 2DGS paper                           | No|
-| gs-mesh sugar-coarse | Level set extractor from SuGaR (Sec 4.2 from the paper)          | Both |
-| gs-mesh gaussians  | Use Gaussian xyzs and normals to Poisson                           | Yes|
-
-Use the `--help` command with each method to see more useful options and settings.
-
-For very small object captures, TSDF works well with 0.004 voxel size and 0.02 SDF trunc distance.
-
-<img src="./assets/poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
-
-But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson for more robust results with little hyperparameter tuning.
-
-<img src="./assets/replica_poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
-
-</details>
-<br>
-
-# Scripts
-
-<details close>
-<summary> Generate pseudo ground truth normal maps </summary>
-The `dn-splatter` model's predicted normals can be supervised with the gradient of rendered depth maps or by external monocular normal estimates using the flag `--pipeline.model.normal-supervision (mono/depth)`. To train with monocular normals, you need to use an external network to predict them.
-
-We support generating low and hd monocular normal estimates from a pretrained [omnimodel](https://github.com/EPFL-VILAB/omnidata) and from [DSINE](https://github.com/baegwangbin/DSINE). 
-
-
-#### 1. Omnidata normals:
-You need to download the model weights first:
 
 ```bash
-python dn_splatter/data/download_scripts/download_omnidata.py
+# download
+git clone https://github.com/maturk/dn-splatter.git --recursive
+
+#create a new environment
+git checkout ags-mesh-2dgs
+conda env create --file environment.yml
+conda activate ags_mesh
+
+# install additional package:
+pip install fvcore
+pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu118_pyt201/pytorch3d-0.7.4-cp38-cp38-linux_x86_64.whl
+
+# install IsoOctree library
+git clone https://github.com/SpectacularAI/IsoOctree.git --recursive
+cd IsoOctree
+
+../install_IsoOctree.sh
+
+cd ..
 ```
 
-Then generate normal maps using the following command:
+## Data Preparation
 ```bash
-python dn_splatter/scripts/normals_from_pretrain.py
-        --data-dir (path to data root which either has a transforms.json or images/ folder)
-        --img-dir-name (if transforms.json file is not found, use images in this folder (default /images))
-        --resolution {low, hd} (low default and reccommended)
+# First generate depth mask based on depth normal and pre-train normal consistency check:
+python depth_normal_consistency.py --data_dir <dataset_path> --transform_name <transformation script.json>
+
+# this command will generate depth_normals and depth_normals_mask for the RGBD sequences
+
+## note: we put pose in transform.json for scannetpp iphone sequences, so please first run dn-splatter with scannetpp dataset to get the transform.json
+
+# Second, please follow dn-splatter main branch to generate the pre-train normal
+
 ```
-We highly reccommend using low res normal maps, since generating HD versions from omnidata (that match the dataset image size) is very time consuming.
-
-#### 2. DSINE normals:
-To generate normals from DSINE, run the following command:
-
+Commandline arguments you should adjust accordingly to generate depth mask
 ```bash
-python dn_splatter/scripts/normals_from_pretrain.py --data-dir [PATH_TO_DATA] --model-type dsine
+--data_dir # path to the sequence folder
+--transform_name # transforms.json or transformation_colmap.json file
 ```
 
-If using DSINE normals for supervision, remember to use the `--normal-format opencv` in your `ns-train` command. An example command is as follows:
-
+## Training
+To train a scene, simply use
 ```bash
-ns-train dn-splatter --pipeline.model.use-normal-loss True --pipeline.model.normal-supervision mono replica --data ./datasets/Replica/ --normals-from pretrained --normal-format opencv
+# currently we only support Scannetpp and MushRoom dataset
+python train.py -s <path to MuSHRoom or Scannetpp dataset> 
+--model_path <output_path> --depth_supervision --normal_supervision
 ```
 
-#### Important notes:
-Default save path of generated normals is `data_root/normals_from_pretrain`
-And to enable training with pretrained normals, add `--normals-from pretrained` flag in the dataparser. 
+## Testing
 
-NOTE: different monocular networks can use varying camera coordinate systems for saving/visualizing predicted normals in the camera frame. We support both OpenGL and OpenCV coordinate systems. Each dataparser has a flag `--normal-format [opengl/opencv]` to distinguish between them. We render normals into the camera frame according to OpenCV color coding which is similar to Open3D. Some software might have different conventions. Omnidata normals are stored in OpenGL coordinates, but we convert them to OpenCV for consistency across the repo.
-
-</details>
-<details close>
-<summary> Convert dataset to COLMAP format </summary>
-
-If your dataset has no camera pose information, you can generate poses using COLMAP.
-
-Convert a dataset of images to COLMAP format with
+### Novel view synthesize evaluation
 ```bash
-python dn_splatter/scripts/convert_colmap.py --image-path [data_root/images] --use-gpu/--no-use-gpu
-```
-</details>
-
-<details close>
-<summary> Generate scale aligned mono-depth estimates </summary>
-
-If your dataset has no sensor depths, and you have a COLMAP processed dataset, we provide a script to generate scale aligned monocular depth estimates. Scale alignment refers to solving for the scale ambiquity between estimated monocular depths and the scale of your input COLMAP poses.
-
-This script generates sfm_depths/ and mono_depth/ directories in the data root:
-
-```
-<data>
-|---image_path
-|   |---<image 0>
-|   |---<image 1>
-|   |---...
-|---sfm_depths
-|   |---<sfm_depth 0>
-|   |---<sfm_depth 1>
-|   |---...
-|---mono_depth
-|   |---<mono_depth 0>.png
-|   |---<mono_depth 0>_aligned.npy
+python render.py -m <output_path> -s <path to MuSHRoom or Scannetpp dataset>   --iteration 30000 --skip_mesh  --skip_train
 ```
 
-The dataset is expected to be in COLMAP format (contains a colmap/sparse/0 folder in data root) since SfM points are required.
-
+### Bounded Mesh Extraction
+To export a mesh within a bounded volume, simply use
 ```bash
-python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
-                                      --skip-colmap-to-depths, --no-skip-colmap-to-depths \
-                                      --skip-mono-depth-creation, --no-skip-mono-depth-creation \
+python render.py -m <path to pre-trained model> -s <path to COLMAP dataset> \
+--iteration 30000 --voxel_size 0.01 --depth_trunc 10 --sdf_trunc 0.03 --skip_train --skip_test
 ```
-NOTE: if faced with the following error:
-```
-TypeError: expected size to be one of int or Tuple[int] or Tuple[int, int] or Tuple[int, int, int], but got size with types [<class 'numpy.int64'>, <class 'numpy.int64'>]
-```
-Downgrading from Torch 2.1.2 to 2.0.1 solves the issue. 
-
-</details>
-
-<details close>
-<summary> Generate only mono depth estimates skipping SfM alignment </summary>
-
-To skip SfM alignment and just render monocular depths for your dataset, use the following script:
+Commandline arguments you should adjust accordingly for meshing for bounded TSDF fusion, use
 ```bash
-python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
-                                      --skip-colmap-to-depths  --skip_alignment \
-                                      
+--voxel_size # voxel size
+--depth_trunc # depth truncation
+--sdf_trunc # sdf truncation distance
 ```
-</details>
 
-## Custom RGB-D Smartphone (Android/iPhone) Data
-For casually captured RGB-D streams, consider using [SpectacularAI](https://www.spectacularai.com/mapping) SDK for iPhone/Android or Oak/RealSense/Kinect sensor streams. For LiDaR enabled smartphones, download the app from the Apple/Play store and capture your data.
-
-Once you have gathered the data, process the inputs into a Nerfstudio suitable format (calculate VIO poses and create a transforms.json file with poses and depth frames):
+### IsoOctree Mesh Extraction
+To export a mesh with IsoOctree based method, use:
 ```bash
-pip install spectacularAI
-python dn_splatter/scripts/process_sai.py [PATH_TO_SAI_INPUT_FOLDER] [PATH_TO_OUTPUT_FOLDER]
-```
+# first export rendered rgb, depth and normal of train set:
+python render.py -m <output_path> -s <path to MuSHRoom or Scannetpp dataset>   --iteration 30000 --skip_mesh  --skip_test
 
-To train with the custom data:
+# get mesh with IsoOctree-based method
+python isooctree.py  <output_path/train/ours_iteration/> --transformation_path <pose_json_path> \
+--tsdf_rel 0.03 --output_mesh_file <output_path/output.ply> --subdivision_threshold=100
+```
+Commandline arguments you may need to adjust accordingly for meshing to get better quality
 ```bash
-ns-train dn-splatter --data PATH_TO_DATA \
-                 --pipeline.model.use-depth-loss True \
-                 --pipeline.model.depth-lambda 0.2 \
-                 --pipeline.model.use-normal-loss True \
-                 --pipeline.model.use-normal-tv-loss True \
-                 --pipeline.model.normal-supervision depth \
+--tsdf_rel # TSDF fusion tuning param
+--disable_normals # do not use normals in TSDF fusion
+--tsdf_trunc # sdf truncation distance
 ```
 
-For other custom datasets, use the Nerfstudio [conventions](https://docs.nerf.studio/quickstart/data_conventions.html#depth-images) and train with the above command.
 
-## Datasets
-
-Other preprocessed datasets are supported by dataparsers with the keywords `mushroom`, `replica`, `scannetpp`, `nrgbd`, `dtu`, `coolermap`.
-To train with a dataset use the following:
-
+### Mesh Evaluation
+To evaluate reconstructed mesh with reference mesh:
 ```bash
-ns-train dn-splatter [OPTIONS] [mushroom/replica/scannet/nrgbd/dtu/coolermap] --data [DATASET_PATH]
+# mushroom dataset
+python eval/eval_mesh_mushroom.py --gt_mesh_path <path to dataset scene> --pred_mesh_path <path to output.ply> \
+--output <output path>
+
+# scannetpp dataset
+
+python eval/eval_mesh.py --gt_mesh <path to gt mesh> --pred_mesh <path to predicted mesh> --dataset_path <path to scannetpp sequence> --transformation_file <path to transforms.json>
 ```
 
-Dataparsers have their own options, to see the full list use  ```ns-train dn-splatter [mushroom/replica/scannet/nrgbd/dtu/coolermap] --help```. Some useful ones are:
-
-```
-  --depth-mode        : ["sensor","mono","all", "none"] determines what depths to load.
-  --load-normals      : [True/False] whether to load normals or not.
-  --normals-from      : ["depth", "pretrained"] generate pseudo-ground truth normals from depth maps or from pretrained omnimodel.
-  --normal-format     : ["opengl", "opencv"] What coordinate system normals are saved in camera frame.
-  --load-pcd-normals  : [True/False] initialise gaussian scales/rotations based on estimated SfM normals.
-```
-
-### Supported dataparsers:
-<details close>
-<summary> COLMAP datasets </summary>
-For arbitrary COLMAP processed datasets, we expect the following directory structure
-
-```
-<base_dir>
-|---image_path
-|   |---<image 0>
-|   |---<image 1>
-|   |---...
-|---colmap
-    |---sparse
-        |---0
-            |---cameras.bin
-            |---images.bin
-            |---points3D.bin
-```
-
-Use the `coolermap` dataparser with COLMAP datasets as follows:
-
+### NVS Evaluation
+To evaluate NVS quality, run
 ```bash
-ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH]
+ python eval/eval_nvs.py --data <render folder path>
 ```
-</details>
 
-<details close>
-<summary> MuSHRoom</summary>
-<a href="https://github.com/TUTvision/MuSHRoom">MuSHRoom</a>
 
-Support for Kinect and iPhone RGB-D trajectories.
-
-Download per-room datasets with `python dn_splatter/data/download_scripts/mushroom_download.py --room-name [name]`
-
-(OPTIONAL) Download Faro scanner reference depths with `python dn_splatter/data/mushroom_utils/reference_depth_download.py`
-
-Use the `mushroom` dataparser as follows:
-
+### Examples
+Train with MuSHRoom/Scannetpp dataset:
 ```bash
-ns-train dn-splatter \
---pipeline.model.use-depth-loss True \
---pipeline.model.depth-lambda 0.2 \
---pipeline.model.use-normal-loss True \
---pipeline.model.normal-supervision (mono/depth) \
-mushroom --data [DATASET_PATH] --mode [kinect/iphone]
-```
-To get MuSHRoom iPhone sequence with colmap SFM initialized point cloud:
-```bash
-python dn_splatter/scripts/poses_to_colmap_sfm.py --transforms_path [path/transformations_colmap.json] --run_colmap
+# MuSHRoom
+python train.py -s dataset/room_datasets/vr_room/iphone/ --model_path output/mushroom/vr_room --depth_supervision --normal_supervision --test_iterations 300 4000 7000 20000 25000 30000
 
-ns-train dn-splatter \
---pipeline.model.use-depth-loss True \
---pipeline.model.depth-lambda 0.2 \
---pipeline.model.use-normal-loss True \
---pipeline.model.use-normal-tv-loss True \
---pipeline.model.normal-supervision (mono/depth) \
-mushroom --data [DATASET_PATH] --mode iphone --create_pc_from_colmap True
-```
-For easy use, we provide the result of the converted COLMAP pose and point cloud in [zenodo](https://zenodo.org/records/13986996).
-</details>
+# Scannetpp
+python train.py -s dataset/scannetpp/data/8b5caf3398/iphone --model_path output/scannetpp/8b5caf3398/ --depth_supervision --normal_supervision
 
-<details close>
-<summary> Replica </summary>
-<a href="https://github.com/facebookresearch/Replica-Dataset/">Replica</a>
 
-Download the dataset with `python dn_splatter/data/download_scripts/replica_download.py`
+# export rendered images of test set
+python render.py -m output/mushroom/vr_room -s dataset/room_datasets/vr_room/iphone/  --iteration 30000 --skip_mesh  --skip_train
 
-Use the `replica` dataparser as follows:
-```bash
-ns-train dn-splatter 
---pipeline.model.use-depth-loss True \
---pipeline.model.depth-lambda 0.5 \
---pipeline.model.use-normal-loss True \
---pipeline.model.use-normal-tv-loss True \
---pipeline.model.normal-supervision (mono/depth) \
-replica --data [DATASET_PATH] --sequence [office0/office1/office2/office3/office4/room0/room1/room2] 
-```
-</details>
+# evaluate nvs
+python eval/eval_nvs.py --data output/MuSHRoom/vr_room/test/test/ours_30000
 
-<details close>
-<summary> ScanNet++ </summary>
-<a href="https://kaldir.vc.in.tum.de/scannetpp/">ScanNet++</a>
 
-We use the following sequences: 
+# use isooctree-based mesh extraction
+## first get rendered training image
 
-```
-8b5caf3398
-b20a261fdf
-```
-First process the sequences according to the <a href="https://github.com/scannetpp/scannetpp">ScanNet++ toolkit</a>:
+### mushroom
+python render.py -m output/mushroom/vr_room -s dataset/room_datasets/vr_room/iphone/  --iteration 30000 --skip_mesh  --skip_test
 
-Extract the undistorted images with:
-```
-python -m dslr.undistort_colmap dslr/configs/undistort_colmap.yml
+### scannetpp
+python render.py -m output/scannetpp/8b5caf3398 -s dataset/scannetpp/data/8b5caf3398/iphone --iteration 30000 --skip_mesh  --skip_test
+
+## get mesh with IsoOctree-based method 
+### mushroom
+python isooctree.py  output/MuSHRoom/vr_room/train/ours_30000/ --transformation_path dataset/room_datasets/vr_room/iphone/long_capture/transformations_colmap.json --tsdf_rel 0.03 --output_mesh_file output.ply --subdivision_threshold=100
+
+### scannetpp
+python isooctree.py  output/scannetpp/8b5caf3398/train/ours_30000 --transformation_path  dataset/scannetpp/data/8b5caf3398/iphone/transforms.json --tsdf_rel 0.03 --output_mesh_file output.ply --subdivision_threshold=100
+
+## evaluate isooctree mesh
+### mushroom
+python eval/eval_mesh_mushroom.py --gt_mesh_path dataset/room_datasets/vr_room --pred_mesh_path output.ply --output ./
+
+### scannetpp
+python eval/eval_mesh.py --gt_mesh dataset/scannetpp/data/8b5caf3398/scans/mesh_aligned_0.05.ply --pred_mesh output.ply --dataset_path dataset/scannetpp/data/8b5caf3398/iphone --transformation_file dataset/scannetpp/data/8b5caf3398/iphone/transforms.json
+
+
+# or use the bounded mesh extraction from 2dgs
+
+## mushroom
+python render.py -m output/mushroom/vr_room -s dataset/room_datasets/vr_room/iphone/  --iteration 30000 --voxel_size 0.01 --depth_trunc 10 --sdf_trunc 0.03 --skip_train --skip_test
+
+## scannetpp
+python render.py -m output/scannetpp/8b5caf3398 -s dataset/scannetpp/data/8b5caf3398/iphone --iteration 30000 --voxel_size 0.01 --depth_trunc 10 --sdf_trunc 0.03 --skip_train --skip_test
+
 ```
 
-and extract iphone rgb, mask and depth frames with: 
-```
-python -m iphone.prepare_iphone_data iphone/configs/prepare_iphone_data.yml
-```
-
-Use the `scannetpp` dataparser as follows
-```bash
-ns-train dn-splatter  \
---pipeline.model.use-depth-loss True \
---pipeline.model.depth-lambda 0.2 \
---pipeline.model.use-normal-loss True \
---pipeline.model.use-normal-tv-loss True \ 
-scannetpp --sequence [8b5caf3398/b20a261fdf] --data [DATASET_PATH] 
-```
-
-</details>
-
-<details close>
-<summary> Neural-RGBD </summary>
-<a href="https://github.com/dazinovic/neural-rgbd-surface-reconstruction">Neural-RGBD</a>
-
-Download with `python dn_splatter/data/download_scripts/nrgbd_download.py`
-
-```bash
-ns-train dn-splatter [OPTIONS] nrgbd --sequence whiteroom
-```
-</details>
-
-<details close>
-<summary> DTU </summary>
-<a href="https://roboimagedata.compute.dtu.dk/?page_id=36">DTU</a>
-
-Download with `python dn_splatter/data/download_scripts/dtu_download.py`
-
-```bash
-ns-train dn-splatter gsdf --sequence scan65 --data [DATASET_PATH] 
-```
-</details>
-
-<details close>
-<summary> Tanks and Temples </summary>
-<a href="https://www.tanksandtemples.org">Tanks and Temples</a>
-
-First download the <a href="https://drive.google.com/file/d/0B-ePgl6HF260UXlhWDBiNVZvdk0/view?usp=sharing&resourcekey=0-eliRKXsZ8_vZ7KELO7oPgQ">advanced scenes</a> from the official website.
-
-We extract colmap poses with from the following
-```
- python dn_splatter/scripts/convert_colmap.py --image-path [path_to_image_folder] --use-gpu / --no-use-gpu
-```
-
-```bash
-ns-train dn-splatter [OPTIONS] coolermap --data [DATASET_PATH] 
-```
-</details>
-<br>
-
-# Evaluation
-
-Please see `dn_splatter/eval/eval_instructions.md` for more details.
-
-To run DN-Splatter on an entire dataset of sequences (potentially in parallel with multi-GPU cluster), you can use the `dn_splatter/eval/batch_run.py` script.
-
-For evaluating rgb, depth, and pointcloud metrics (optional), run the following command:
-```bash
-ns-eval --load-config [PATH_TO_CONFIG] --output-path [JSON_OUTPUT_PATH]
-```
-
-To render train/eval images also add the flag `--render-output-path [PATH_TO_IMAGES]`
-
-To get mesh metrics for the MuSHRoom dataset, run the following command:
-```bash
-python dn_splatter/eval/eval_mesh_mushroom_vis_cull.py --gt_mesh_path [GT_Mesh_Path] --pred_mesh_path [Pred_Mesh_Path] --output --device [iphone/kinect] 
-```
-
-To get mesh metrics for other datasets ScanNet++/Replica or custom datasets, run the following command:
-```bash
-python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pred-mesh-path [Pred_Mesh_Path] --transformation_file [Path_to_transform_file] --dataset_path [Dataset path]
-```
---transformation_file path is the path of the `transform.json` generated when training scannetpp [here](https://github.com/maturk/dn-splatter/blob/367c36dbcf1426ba21c1b58045346efdfebc4242/dn_splatter/data/scannetpp_dataparser.py#L251).
---dataset_path is the path to the dataset folder, e.g. `datasets/scannetpp/data/b20a261fdf/iphone`
-
-# Acknowledgements
-I want to thank [Tobias Fischer](https://tobiasfshr.github.io), [Songyou Peng](https://pengsongyou.github.io) and [Philipp Lindenberger](https://github.com/Phil26AT) for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the [Nerfstudio](https://github.com/nerfstudio-project/nerfstudio) team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.
-
-# Citation
-If you find this work useful in your research, consider citing it:
-```
-@misc{turkulainen2024dnsplatter,
-        title={DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing}, 
-        author={Matias Turkulainen and Xuqian Ren and Iaroslav Melekhov and Otto Seiskari and Esa Rahtu and Juho Kannala},
-        year={2024},
-        eprint={2403.17822},
-        archivePrefix={arXiv},
-        primaryClass={cs.CV}
-}
-```
-
-# Contributing
-
-We welcome any bug fixes, issues/comments, or contributions. Also, if you have any suggestions or improvements, let me know!
-
-I want to thank [Pablo Vela](https://github.com/pablovela5620) for contributing the DSINE normal predictor into this project and allowing for an alternative (much easier) installation with Pixi.
-
-## Developers
-- [maturk](https://github.com/maturk)
-- [XuqianRen](https://github.com/XuqianRen)
