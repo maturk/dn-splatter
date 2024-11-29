@@ -17,6 +17,7 @@ from dn_splatter.scripts.render_model import RenderModel
 class Config:
     # Output settings
     output_dir: str = "experiments/"
+    model: Literal["dn-splatter", "ags-mesh"] = "dn-splatter"
     experiment_name: str = "splatfacto"
     timestamp: str = ""  # do not change
     # Paths
@@ -61,6 +62,7 @@ dn_splatter_config = Config(
     normal_supervision="mono",
     two_d_gaussians=True,
 )
+ags_mesh_config = Config()
 
 mushroom_scenes = [
     "coffee_room",
@@ -127,7 +129,7 @@ def train_scene(
             command = [
                 f"OMP_NUM_THREADS=4  CUDA_VISIBLE_DEVICES={gpu}",
                 "ns-train",
-                "dn-splatter",
+                config.model,
                 "--timestamp",
                 SCENE,
                 "--output-dir",

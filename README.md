@@ -1,12 +1,19 @@
-# DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing
+# DN-Splatter + AGS-Mesh
+This repo implements research papers ([DN-Splatter](https://maturk.github.io/dn-splatter/) and [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/)) for depth and normal supervision of Gaussian splatting models for improved novel-view synthesis using smartphone data (iPhones) and mesh reconstruction.
 
-### <p align="center">[🌐Project Page](https://maturk.github.io/dn-splatter/) | [🖨️ArXiv](https://arxiv.org/abs/2403.17822) </p>
-
-This repo implements depth and normal supervision for 3DGS and several mesh extraction scripts.
+### Pipelines:
 <p align="center">
-    <img src="./assets/pipeline_crop.jpg" alt="Pipeline" width="600"/>
+    <figure style="display: inline-block; text-align: center; margin: 10px;">
+        <img src="./assets/pipeline_crop.jpg" alt="DN-Splatter Pipeline" height="300"/>
+        <figcaption>DN-Splatter</figcaption>
+    </figure>
+    <figure style="display: inline-block; text-align: center; margin: 10px;">
+        <img src="./assets/pipeline_ags_mesh.png" alt="AGS-Mesh Pipeline" height="300"/>
+        <figcaption>AGS-Mesh</figcaption>
+    </figure>
 </p>
-Demo:
+
+Quick demo:
 
 https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d578bf877a35
 <!-- CONTENTS -->
@@ -47,6 +54,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
+- 29.11.2024: We release [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/) which improves mesh reconstruction using a novel depth and normal filtering strategy, and octree-based isosurface extraction method. We release code for Splatfacto based AGS-Mesh model and 2DGS based AGS-Mesh model. We release AGS-Mesh plug in code for both DN-Splatter and Inria 2DGS version. Please switch to [AGS-Mesh-2dgs](https://github.com/maturk/dn-splatter/tree/ags-mesh-2dgs) for Inria 2DGS version.
 - 17.10.2024: [FusionSense](https://github.com/ai4ce/FusionSense) improves DN-Splatter in sparse settings for robotic tactile applications! 🚀
 - 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
@@ -89,74 +97,7 @@ pixi shell
 ```
 </details>
  
-## Usage
-This repo registers a new model called `dn-splatter` with various additional options:
-
-| Command | Description |
-|--------------------|---|
-| --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
-| --pipeline.model.depth-loss-type (MSE, LogL1, HuberL1, L1, EdgeAwareLogL1, PearsonDepth) | Depth loss type |
-| --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
-| --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
-| --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
-| --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'depth' default.|
-| --pipeline.model.two-d-gaussians (True/False)| Encourage 2D gaussians |
-
-Please check the dn_model.py for a full list of supported configs (some are only experimental).
-
-## Recommended settings:
-For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
-```bash
-ns-train dn-splatter --data PATH_TO_DATA \
-                 --pipeline.model.use-depth-loss True \
-                 --pipeline.model.depth-lambda 0.2 \
-                 --pipeline.model.use-normal-loss True \
-                 --pipeline.model.use-normal-tv-loss True \
-                 --pipeline.model.normal-supervision (mono/depth) \
-```
-
-### dn-splatter-big:
-We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
-
-### Supported Depth Losses
-To train with a specific depth loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
-
-For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
-
-
-## Mesh
-To extract a mesh, run the following command:
-```bash
-gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
-```
-We reccommend using `gs-mesh o3dtsdf`.
-
-<details close>
-<summary> Mesh algorithm details </summary>
-
-Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
-| gs-mesh |  Description | Requires normals?|
-|--------------------|--------------------------------------------------------------------|-|
-| gs-mesh dn         | Backproject depth and normal maps to Poisson                       | Yes|
-| gs-mesh tsdf       | TSDF Fusion algorithm                                              | No|
-| gs-mesh o3dtsdf    | TSDF Fusion algorithm used in 2DGS paper                           | No|
-| gs-mesh sugar-coarse | Level set extractor from SuGaR (Sec 4.2 from the paper)          | Both |
-| gs-mesh gaussians  | Use Gaussian xyzs and normals to Poisson                           | Yes|
-
-Use the `--help` command with each method to see more useful options and settings.
-
-For very small object captures, TSDF works well with 0.004 voxel size and 0.02 SDF trunc distance.
-
-<img src="./assets/poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
-
-But TSDF can fail in larger indoor room reconstructions. We reccommend Poisson for more robust results with little hyperparameter tuning.
-
-<img src="./assets/replica_poisson_vs_tsdf.jpeg" alt="Poisson vs TSDF for small captures" width="600"/>
-
-</details>
-<br>
-
-# Scripts
+## Data Preparation Scripts
 
 <details close>
 <summary> Generate pseudo ground truth normal maps </summary>
@@ -259,6 +200,89 @@ python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
                                       
 ```
 </details>
+
+<details close>
+<summary> Depth mask generated for AGS-Mesh </summary>
+
+To generate the depth mask to run AGS-Mesh, using:
+```bash
+python depth_normal_consistency.py --data_dir <dataset_path> --transform_name <transformation script.json>                                    
+```
+</details>
+
+## Usage
+This repo registers a model called `dn-splatter` and `ags-mesh` with various additional options:
+
+| Command | Description |
+|--------------------|---|
+| --pipeline.model.use-depth-loss (True/False) | Enables depth supervision |
+| --pipeline.model.depth-loss-type (MSE, LogL1, HuberL1, L1, EdgeAwareLogL1, PearsonDepth) | Depth loss type |
+| --pipeline.model.depth-lambda (Float 0.2 recommended) | Regularizer weight for depth supervision |
+| --pipeline.model.use-normal-loss (True/False) | Enables normal loss |
+| --pipeline.model.use-normal-tv-loss (True/False) | Normal smoothing loss|
+| --pipeline.model.normal-supervision (mono/depth)| Whether to use monocular or rendered depths for normal supervision. 'mono' default.|
+| --pipeline.model.two-d-gaussians (True/False)| Encourage 2D gaussians |
+
+Please check the dn_model.py for a full list of supported configs (some are only experimental).
+
+## Model overviews
+`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](TODO) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
+
+## Recommended settings:
+For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
+
+```bash
+# to run the dn-splatter model
+ns-train dn-splatter --data PATH_TO_DATA \
+                 --pipeline.model.use-depth-loss True \
+                 --pipeline.model.depth-lambda 0.2 \
+                 --pipeline.model.use-normal-loss True \
+                 --pipeline.model.use-normal-tv-loss True \
+                 --pipeline.model.normal-supervision (mono/depth)
+# to run the ags-mesh model
+ns-train ags-mesh --data PATH_TO_DATA \
+                 --pipeline.model.use-depth-loss True \
+                 --pipeline.model.depth-lambda 0.2 \
+                 --pipeline.model.use-normal-loss True \
+                 --pipeline.model.normal-supervision (mono/depth)
+```
+
+### dn-splatter-big:
+We also provide a `dn-splatter-big` variant that increases the number of Gaussians in the scene which may enhance the quality of novel-view synthesis.  This increases training time and hardware requirements. Simply replace the `dn-splatter` keyword with `dn-splatter-big` in the above commands.
+
+### Supported Depth Losses
+To train with a specific depth loss, use the flag: `--pipeline.model.depth-loss-type DepthLossType` where DepthLossType is one of `["MSE", "LogL1", "HuberL1", "L1", "EdgeAwareLogL1", "PearsonDepth"]`
+
+For sensor depth supervision we reccommend `EdgeAwareLogL1` loss. For monocular depth supervision, we recommend the relative Pearson correlation loss `PearsonDepth`.
+
+
+## Mesh
+To extract a mesh, run the following command:
+```bash
+gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
+```
+We reccommend using `gs-mesh o3dtsdf`.
+
+<details close>
+<summary> Mesh algorithm details </summary>
+
+Export a mesh with the `gs-mesh --help` command. The following mesh exporters are supported.
+| gs-mesh |  Description | Requires normals?|
+|--------------------|--------------------------------------------------------------------|-|
+| gs-mesh dn         | Backproject depth and normal maps to Poisson                       | Yes|
+| gs-mesh tsdf       | TSDF Fusion algorithm                                              | No|
+| gs-mesh o3dtsdf    | TSDF Fusion algorithm used in 2DGS paper                           | No|
+| gs-mesh sugar-coarse | Level set extractor from SuGaR (Sec 4.2 from the paper)          | Both |
+| gs-mesh gaussians  | Use Gaussian xyzs and normals to Poisson                           | Yes|
+
+Use the `--help` command with each method to see more useful options and settings.
+
+For very small object captures, TSDF works well with 0.004 voxel size and 0.02 SDF trunc distance.
+
+</details>
+<br>
+
+
 
 ## Custom RGB-D Smartphone (Android/iPhone) Data
 For casually captured RGB-D streams, consider using [SpectacularAI](https://www.spectacularai.com/mapping) SDK for iPhone/Android or Oak/RealSense/Kinect sensor streams. For LiDaR enabled smartphones, download the app from the Apple/Play store and capture your data.
@@ -481,16 +505,18 @@ python dn_splatter/eval/eval_mesh_vis_cull.py --gt-mesh-path [GT_Mesh_Path] --pr
 I want to thank [Tobias Fischer](https://tobiasfshr.github.io), [Songyou Peng](https://pengsongyou.github.io) and [Philipp Lindenberger](https://github.com/Phil26AT) for their fruitful discussions and guidance, especially concerning mesh reconstruction. This project is built on various open-source software, and I want to thank the [Nerfstudio](https://github.com/nerfstudio-project/nerfstudio) team for their great efforts maintaining and extending a large project allowing for these kinds of extensions to exist.
 
 # Citation
-If you find this work useful in your research, consider citing it:
+If you find this work useful in your research, consider citing DN-Splatter:
 ```
-@misc{turkulainen2024dnsplatter,
+@InProceedings{turkulainen2024dnsplatter,
         title={DN-Splatter: Depth and Normal Priors for Gaussian Splatting and Meshing}, 
         author={Matias Turkulainen and Xuqian Ren and Iaroslav Melekhov and Otto Seiskari and Esa Rahtu and Juho Kannala},
-        year={2024},
-        eprint={2403.17822},
-        archivePrefix={arXiv},
-        primaryClass={cs.CV}
+        booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+        year={2025}
 }
+```
+and AGS-Mesh:
+```
+TODO
 ```
 
 # Contributing
