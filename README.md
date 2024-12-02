@@ -226,7 +226,7 @@ This repo registers a model called `dn-splatter` and `ags-mesh` with various add
 Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
 ## Model overviews
-`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](TODO) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
+`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](https://arxiv.org/abs/2411.19271) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
 
 ## Recommended settings:
 For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
@@ -516,7 +516,14 @@ If you find this work useful in your research, consider citing DN-Splatter:
 ```
 and AGS-Mesh:
 ```
-TODO
+@InProceedings{ren2024agsmesh,
+        title={AGS-Mesh: Adaptive Gaussian Splatting and Meshing with Geometric Priors for Indoor Room Reconstruction Using Smartphones}, 
+        author={Xuqian Ren and Matias Turkulainen and Jiepeng Wang and Otto Seiskari and Iaroslav Melekhov and Juho Kannala and Esa Rahtu},
+        booktitle={International Conference on 3D Vision (3DV)}
+        year={2025},
+        archiveprefix={arxiv},
+        eprint={2411.19271},
+}
 ```
 
 # Contributing
