@@ -202,16 +202,17 @@ python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
 </details>
 
 <details close>
-<summary> Depth mask generated for AGS-Mesh </summary>
+<summary> Depth mask filter for AGS-Mesh method</summary>
 
-To generate the depth mask to run AGS-Mesh, using:
+The AGS-Mesh method filters inconsistent depth estimates using a depth->normal consistency check. To generate the depth masks, use the following script:
 ```bash
-python depth_normal_consistency.py --data_dir <dataset_path> --transform_name <transformation script.json>                                    
+python dn_splatter/scripts/depth_normal_consistency.py --data-dir <dataset_path> --transforms_name <transforms.json>                                    
 ```
+where `--data-dir` is the root dataset path (e.g. room_datasets/vr_room/iphone/long_capture) and `--transforms-name` is the name of the json file containing dataset data (e.g. transformations_colmap.json for the mushroom dataset).
 </details>
 
 ## Usage
-This repo registers a model called `dn-splatter` and `ags-mesh` with various additional options:
+This repo registers two models called `dn-splatter` and `ags-mesh` with various additional options:
 
 | Command | Description |
 |--------------------|---|
