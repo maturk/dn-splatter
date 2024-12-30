@@ -40,7 +40,9 @@ def render_depth_maps(mesh, poses, H, W, K, far=10.0, debug=False):
     mesh = pyrender.Mesh.from_trimesh(mesh)
     scene = pyrender.Scene()
     scene.add(mesh)
-    camera = pyrender.IntrinsicsCamera(fx=K[0, 0], fy=K[1, 1], cx=K[0, 2], cy=K[1, 2], znear=0.01, zfar=far)
+    camera = pyrender.IntrinsicsCamera(
+        fx=K[0, 0], fy=K[1, 1], cx=K[0, 2], cy=K[1, 2], znear=0.01, zfar=far
+    )
     camera_node = pyrender.Node(camera=camera, matrix=np.eye(4))
     scene.add_node(camera_node)
     renderer = pyrender.OffscreenRenderer(W, H)
@@ -54,7 +56,9 @@ def render_depth_maps(mesh, poses, H, W, K, far=10.0, debug=False):
         if debug:
             global_max = np.max(depth)
             normalized_images = np.uint8((depth / global_max) * 255)
-            colormapped_images = cv2.applyColorMap(normalized_images, cv2.COLORMAP_INFERNO)
+            colormapped_images = cv2.applyColorMap(
+                normalized_images, cv2.COLORMAP_INFERNO
+            )
             cv2.imwrite("depth_map_" + str(i) + ".png", colormapped_images)
         depth_maps.append(depth)
 
@@ -428,6 +432,9 @@ def main(
 
     if output_same_as_pred_mesh:
         output = pred_mesh_path.parent
+
+    if not Path(output).exists():
+        Path(output).mkdir(parents=True)
 
     gt_mesh = cull_mesh(
         dataset_path,

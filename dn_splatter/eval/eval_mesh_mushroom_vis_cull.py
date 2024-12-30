@@ -12,12 +12,11 @@ import open3d as o3d
 import torch
 import trimesh
 import tyro
+from tqdm import tqdm
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from PIL import Image
-from pytorch3d import transforms as py3d_transform
-from pytorch3d.renderer import MeshRasterizer, PerspectiveCameras, RasterizationSettings
-from pytorch3d.structures import Meshes
+import pyrender
 from scipy.spatial import cKDTree
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -205,49 +204,31 @@ def pose6d_to_matrix(batch_poses):
     return c2w
 
 
-def render_depth_maps(mesh, poses, H, W, K, far=10.0):
-    vertices = torch.tensor(mesh.vertices, dtype=torch.float32)
-    faces = torch.tensor(mesh.faces, dtype=torch.int64)
-    mesh = Meshes(verts=[vertices], faces=[faces]).to(device)
+def render_depth_maps(mesh, poses, H, W, K, far=10.0, debug=False):
+    mesh = pyrender.Mesh.from_trimesh(mesh)
+    scene = pyrender.Scene()
+    scene.add(mesh)
+    camera = pyrender.IntrinsicsCamera(
+        fx=K[0, 0], fy=K[1, 1], cx=K[0, 2], cy=K[1, 2], znear=0.01, zfar=far
+    )
+    camera_node = pyrender.Node(camera=camera, matrix=np.eye(4))
+    scene.add_node(camera_node)
+    renderer = pyrender.OffscreenRenderer(W, H)
+    render_flags = pyrender.RenderFlags.OFFSCREEN | pyrender.RenderFlags.DEPTH_ONLY
 
-    Rz_rot = py3d_transform.euler_angles_to_matrix(
-        torch.tensor([0.0, 0.0, math.pi]), convention="XYZ"
-    ).cuda()
-    K = K.unsqueeze(0)
-    focal_length = torch.stack([K[:, 0, 0], K[:, 1, 1]], dim=-1)
-    principal_point = K[:, :2, 2]
-    image_size = torch.tensor([[H, W]]).cuda()
     depth_maps = []
-    for i, c2w in enumerate(poses):
-        c2w = np.linalg.inv(c2w)
-        c2w = torch.tensor(c2w).cuda().float()
+    for i, pose in enumerate(tqdm(poses, desc="Rendering depth maps")):
+        scene.set_pose(camera_node, pose)
+        depth = renderer.render(scene, render_flags)
 
-        R = c2w[:3, :3]
-        T = c2w[:3, 3]
-
-        R2 = (Rz_rot @ R).permute(-1, -2)
-        T2 = Rz_rot @ T
-        cameras = PerspectiveCameras(
-            focal_length=focal_length,
-            principal_point=principal_point,
-            R=R2.unsqueeze(0),
-            T=T2.unsqueeze(0),
-            image_size=image_size,
-            in_ndc=False,
-            device=device,
-        )
-
-        raster_settings = RasterizationSettings(
-            image_size=(H, W), blur_radius=0.0, faces_per_pixel=1
-        )
-
-        rasterizer = MeshRasterizer(cameras=cameras, raster_settings=raster_settings)
-        render_img = rasterizer(mesh.to(device)).zbuf[0, ..., 0]
-        render_img = render_img.cpu().numpy()
-
-        render_img[render_img < 0] = 0
-
-        depth_maps.append(render_img)
+        if debug:
+            global_max = np.max(depth)
+            normalized_images = np.uint8((depth / global_max) * 255)
+            colormapped_images = cv2.applyColorMap(
+                normalized_images, cv2.COLORMAP_INFERNO
+            )
+            cv2.imwrite("depth_map_" + str(i) + ".png", colormapped_images)
+        depth_maps.append(depth)
 
     return depth_maps
 
@@ -287,8 +268,8 @@ def cull_from_one_pose(
 ):
     c2w = deepcopy(pose)
     # to OpenCV
-    # c2w[:3, 1] *= -1
-    # c2w[:3, 2] *= -1
+    c2w[:3, 1] *= -1
+    c2w[:3, 2] *= -1
     w2c = np.linalg.inv(c2w)
     rotation = w2c[:3, :3]
     translation = w2c[:3, 3]
@@ -336,9 +317,7 @@ def get_grid_culling_pattern(
 
     obs_mask = np.zeros(points.shape[0])
     invalid_mask = np.zeros(points.shape[0])
-    for i, pose in enumerate(poses):
-        if verbose:
-            print("Processing pose " + str(i + 1) + " out of " + str(len(poses)))
+    for i, pose in enumerate(tqdm(poses, desc="Getting grid culling pattern")):
         rendered_depth = (
             rendered_depth_list[i] if rendered_depth_list is not None else None
         )
@@ -543,8 +522,6 @@ def cull_mesh(
     vertices = mesh.vertices
     triangles = mesh.faces
 
-    print(remove_occlusion)
-
     if subdivide:
         vertices, triangles = trimesh.remesh.subdivide_to_size(
             vertices, triangles, max_edge=max_edge, max_iter=10
@@ -642,6 +619,13 @@ def main(
     Returns:
         None
     """
+
+    if output_same_as_pred_mesh:
+        output = pred_mesh_path.parent
+
+    if not Path(output).exists():
+        Path(output).mkdir(parents=True)
+
     gt_mesh = trimesh.load(
         str(gt_mesh_path / "gt_mesh.ply"), force="mesh", process=False
     )
@@ -652,8 +636,6 @@ def main(
         force="mesh",
         process=False,
     )
-    if output_same_as_pred_mesh:
-        output = pred_mesh_path.parent
 
     # first transfer nerfstudio mesh back to real scale
     if transform_path and transform_path.exists():
@@ -686,6 +668,11 @@ def main(
     pred_mesh = open3d_mesh_from_trimesh(pred_mesh)
     gt_mesh = open3d_mesh_from_trimesh(gt_mesh)
     gt_mesh = gt_mesh.remove_unreferenced_vertices()
+
+    # current_vertex_count = len(gt_mesh.vertices)
+    # target_vertex_count = current_vertex_count // 2
+    # gt_mesh = gt_mesh.simplify_quadratic_decimation(target_vertex_count)
+
     pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
 
     dataset_path = gt_mesh_path / device / "long_capture"
@@ -702,10 +689,6 @@ def main(
     # simplify gt mesh
     gt_mesh = trimesh_from_open3d_mesh(gt_mesh)
     pred_mesh = trimesh_from_open3d_mesh(pred_mesh)
-
-    current_vertex_count = len(gt_mesh.vertices)
-    target_vertex_count = current_vertex_count // 2
-    gt_mesh = gt_mesh.simplify_quadratic_decimation(target_vertex_count)
 
     gt_mesh = cull_mesh(
         dataset_path,
@@ -729,10 +712,6 @@ def main(
         max_edge=0.015,
     )
 
-    if output_same_as_pred_mesh:
-        output = pred_mesh_path.parent
-
-    # gt_mesh.export(str(output / "gt_mesh_cull.ply"))
     pred_mesh.export(str(output / "mesh_cull.ply"))
     # evaluate culled mesh
     print("finished save and cut the mesh")
