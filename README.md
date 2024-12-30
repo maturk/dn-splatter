@@ -202,16 +202,17 @@ python dn_splatter/scripts/align_depth.py --data [path_to_data_root] \
 </details>
 
 <details close>
-<summary> Depth mask generated for AGS-Mesh </summary>
+<summary> Depth mask filter for AGS-Mesh method</summary>
 
-To generate the depth mask to run AGS-Mesh, using:
+The AGS-Mesh method filters inconsistent depth estimates using a depth->normal consistency check. To generate the depth masks, use the following script:
 ```bash
-python depth_normal_consistency.py --data_dir <dataset_path> --transform_name <transformation script.json>                                    
+python dn_splatter/scripts/depth_normal_consistency.py --data-dir <dataset_path> --transforms_name <transforms.json>                                    
 ```
+where `--data-dir` is the root dataset path (e.g. room_datasets/vr_room/iphone/long_capture) and `--transforms-name` is the name of the json file containing dataset data (e.g. transformations_colmap.json for the mushroom dataset).
 </details>
 
 ## Usage
-This repo registers a model called `dn-splatter` and `ags-mesh` with various additional options:
+This repo registers two models called `dn-splatter` and `ags-mesh` with various additional options:
 
 | Command | Description |
 |--------------------|---|
@@ -226,7 +227,7 @@ This repo registers a model called `dn-splatter` and `ags-mesh` with various add
 Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
 ## Model overviews
-`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](https://arxiv.org/abs/2411.19271) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch and the ags_mesh repo.
+`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](https://arxiv.org/abs/2411.19271) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch and the [ags_mesh](https://github.com/XuqianRen/AGS_Mesh).
 
 ## Recommended settings:
 For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
@@ -522,7 +523,14 @@ If you find this work useful in your research, consider citing DN-Splatter:
 ```
 and AGS-Mesh:
 ```
-TODO
+@InProceedings{ren2024agsmesh,
+        title={AGS-Mesh: Adaptive Gaussian Splatting and Meshing with Geometric Priors for Indoor Room Reconstruction Using Smartphones}, 
+        author={Xuqian Ren and Matias Turkulainen and Jiepeng Wang and Otto Seiskari and Iaroslav Melekhov and Juho Kannala and Esa Rahtu},
+        booktitle={International Conference on 3D Vision (3DV)}
+        year={2025},
+        archiveprefix={arxiv},
+        eprint={2411.19271},
+}
 ```
 
 # Contributing
