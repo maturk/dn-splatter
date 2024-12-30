@@ -684,6 +684,8 @@ class DNSplatterModel(SplatfactoModel):
                 )
             )
             gt_normal = (1 + gt_normal) / 2
+        else:
+            gt_normal = None
 
         additional_data = {
             "scales": self.scales,
