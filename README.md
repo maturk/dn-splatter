@@ -54,7 +54,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
 </details>
 
 ## Updates
-- 29.11.2024: We release [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/) which improves mesh reconstruction using a novel depth and normal filtering strategy, and octree-based isosurface extraction method. We release code for Splatfacto based AGS-Mesh model and 2DGS based AGS-Mesh model. We release AGS-Mesh plug in code for both DN-Splatter and Inria 2DGS version. Please switch to [AGS-Mesh-2dgs](https://github.com/maturk/dn-splatter/tree/ags-mesh-2dgs) for Inria 2DGS version.
+- 29.11.2024: We release [AGS-Mesh](https://xuqianren.github.io/ags_mesh_website/) method, which improves mesh reconstruction using a novel depth and normal filtering strategy, and octree-based isosurface extraction method. We release code for Splatfacto based AGS-Mesh model and 2DGS based AGS-Mesh model. We release AGS-Mesh plug in code for both DN-Splatter and Inria 2DGS version. Please switch to [AGS-Mesh-2dgs](https://github.com/maturk/dn-splatter/tree/ags-mesh-2dgs) for Inria 2DGS version or open the [AGS-Mesh](https://github.com/XuqianRen/AGS_Mesh) for more details. 📣
 - 17.10.2024: [FusionSense](https://github.com/ai4ce/FusionSense) improves DN-Splatter in sparse settings for robotic tactile applications! 🚀
 - 04.09.2024: Support Open3d TSDF to extract mesh, support Patch-based Depth Correlation Loss from [SparseGS](https://github.com/ForMyCat/SparseGS) for monodepth supervision, support visualizing normal estimates from the Gaussian geometry and estimated surface normal from depths, support colmap SFM point cloud initialization for MuSHRoom dataset.
 - 14.06.2024: Support gsplat [v1.0.0 🚀](https://x.com/ruilong_li/status/1799156694527909895). Faster training and better memory consumption. Training with `--pipeline.model.predict_normals` is about 20% slower than without.
@@ -226,7 +226,7 @@ This repo registers a model called `dn-splatter` and `ags-mesh` with various add
 Please check the dn_model.py for a full list of supported configs (some are only experimental).
 
 ## Model overviews
-`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](TODO) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch.
+`dn-splatter` is the baseline model that implements depth and normal supervision within 3DGS. `ags-mesh` improves dn-splatter with a novel depth and normal filtering strategy. Please see [dn-splatter](https://arxiv.org/abs/2403.17822) and [ags-mesh](https://arxiv.org/abs/2411.19271) research papers for more details regarding model architectures. We provide a 2DGS based version of AGS-Mesh in the ags-mesh-2dgs branch and the ags_mesh repo.
 
 ## Recommended settings:
 For larger indoor captures with sensor depth data (e.g. MuSHRoom / ScanNet++ datasets):
@@ -262,6 +262,12 @@ To extract a mesh, run the following command:
 gs-mesh {dn, tsdf, o3dtsdf, sugar-coarse, gaussians, marching} --load-config [PATH] --output-dir [PATH]
 ```
 We reccommend using `gs-mesh o3dtsdf`.
+
+IsoOctree mesh extraction for more smooth surface:
+```bash
+python dn_splatter/scripts/isooctree_dn.py <root_folder> --transformation_path <pose_json_path> \
+--tsdf_rel 0.03 --output_mesh_file <output_path/output.ply> --subdivision_threshold=100
+```
 
 <details close>
 <summary> Mesh algorithm details </summary>
