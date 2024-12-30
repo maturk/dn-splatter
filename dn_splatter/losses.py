@@ -4,6 +4,7 @@ import abc
 import math
 from enum import Enum
 from typing import Literal, Optional
+from dn_splatter.metrics import mean_angular_error
 
 import torch
 import torch.nn.functional as F
@@ -28,6 +29,7 @@ class DepthLossType(Enum):
     EdgeAwareTV = "EdgeAwareTV"
     PearsonDepth = "PearsonDepth"
     LocalPearsonDepthLoss = "LocalPearsonDepthLoss"
+    AdaptiveDepth = "AdaptiveDepth"
 
 
 class DepthLoss(nn.Module):
@@ -62,6 +64,8 @@ class DepthLoss(nn.Module):
             return PearsonDepthLoss(**self.kwargs)
         elif self.depth_loss_type == DepthLossType.LocalPearsonDepthLoss:
             return LocalPearsonDepthLoss(**self.kwargs)
+        elif self.depth_loss_type == DepthLossType.AdaptiveDepth:
+            return AdaptiveDepth(**self.kwargs)
         else:
             raise ValueError(f"Unsupported loss type: {self.depth_loss_type}")
 
@@ -353,6 +357,7 @@ class NormalLossType(Enum):
 
     L1 = "L1"
     Smooth = "Smooth"
+    AdaptiveNormal = "AdaptiveNormal"
 
 
 class NormalLoss(nn.Module):
@@ -373,8 +378,50 @@ class NormalLoss(nn.Module):
             return L1(**self.kwargs)
         elif self.normal_loss_type == NormalLossType.Smooth:
             return TVLoss(**self.kwargs)
+        elif self.normal_loss_type == NormalLossType.AdaptiveNormal:
+            return AdaptiveNormal(**self.kwargs)
         else:
             raise ValueError(f"Unsupported loss type: {self.normal_loss_type}")
+
+class AdaptiveDepth(nn.Module):
+    """Adaptive loss"""
+
+    def __init__(
+        self, implementation: Literal["scalar", "per-pixel"] = "scalar", **kwargs
+    ):
+        super().__init__()
+        self.edgeaware = EdgeAwareLogL1(implementation=implementation)
+
+    def forward(self, pred, gt, gt_image, mask, confidence_map, step):
+        if step < 7_000:
+            return self.edgeaware(pred, gt, gt_image, mask)
+        else:
+            gt = torch.where(confidence_map > 0, gt, 0).cuda()
+            mask = gt > 0.1
+            return self.edgeaware(pred, gt, gt_image, mask)
+
+
+class AdaptiveNormal(nn.Module):
+    """Adaptive loss"""
+
+    def __init__(
+        self, implementation: Literal["scalar", "per-pixel"] = "scalar", **kwargs
+    ):
+        super().__init__()
+        self.implementation = implementation
+        self.L1 = L1(implementation=self.implementation)
+
+    def forward(self, pred, gt, step):
+        if step < 15_000:
+            return self.L1(pred, gt)
+        else:
+            normal_diff = mean_angular_error(
+                (pred * 2 - 1).permute(2, 0, 1).unsqueeze(0),
+                (gt * 2 - 1).permute(2, 0, 1).unsqueeze(0),
+            )
+            normal_confidence = 1 - (normal_diff > 0.1).float()
+            normal_confidence = (normal_confidence > 0).squeeze(0)
+            return self.L1(pred[normal_confidence, :], gt[normal_confidence, :])
 
 
 # pearson depth loss, adapted from https://github.com/ForMyCat/SparseGS/blob/95e7aef29c5562400d3b2b38cc7e90436a432b7c/utils/loss_utils.py#L80

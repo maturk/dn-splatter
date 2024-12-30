@@ -43,6 +43,8 @@ class NormalNerfstudioConfig(NerfstudioDataParserConfig):
     """Whether to load the 3D points from the colmap reconstruction."""
     load_normals: bool = True
     """Set to true to load normal maps"""
+    load_depths: bool = True
+    """Whether to load depth maps"""
     normal_format: Literal["opencv", "opengl"] = "opengl"
     """Which format the normal maps in camera frame are saved in."""
     load_pcd_normals: bool = True
@@ -58,6 +60,20 @@ class NormalNerfstudio(Nerfstudio):
 
     def get_normal_filepaths(self):
         return natsorted(glob.glob(f"{self.normal_save_dir}/*.png"))
+    
+    def get_depth_filepaths(self):
+        depth_paths = natsorted(
+            glob.glob(f"{self.config.data}/mono_depth/*_aligned.npy")
+        )
+        if not depth_paths:
+            CONSOLE.log("Could not find _aligned.npy depths, trying *.npy")
+            depth_paths = natsorted(glob.glob(f"{self.config.data}/mono_depth/*.npy"))
+        if depth_paths:
+            CONSOLE.log("Found depths ending in *.npy")
+        else:
+            CONSOLE.log("Could not find depths, quitting.")
+            quit()
+        return depth_paths
 
     def _load_points3D_normals(self, points, colors, transform_matrix: torch.Tensor):
         """Initialise gaussian scales/rots with normals predicted from pcd"""
@@ -407,6 +423,12 @@ class NormalNerfstudio(Nerfstudio):
 
         # reinitialize metadata for dataparser_outputs
         metadata = {}
+
+        if self.config.load_depths and len(depth_filenames)==0:
+            depth_filenames = self.get_depth_filepaths()
+            metadata["mono_depth_filenames"] = [
+                Path(depth_filenames[i]) for i in indices
+            ]
 
         # _generate_dataparser_outputs might be called more than once so we check if we already loaded the point cloud
         try:

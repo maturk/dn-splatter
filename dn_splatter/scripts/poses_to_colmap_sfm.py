@@ -102,18 +102,35 @@ class PosesToColmap:
 
         camera_model = data["camera_model"]
 
-        fx = data["fl_x"]
-        fy = data["fl_y"]
-        cx = data["cx"]
-        cy = data["cy"]
-        height = data["h"]
-        width = data["w"]
-        with open(str(cameras_txt), "w") as f:
-            f.write("# Camera list with one line of data per camera:\n")
-            f.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
-            f.write("# Number of cameras: 1\n")
-            f.write(f"1 {camera_model} {width} {height} {fx} {fy} {cx} {cy} 0 0 0 0\n")
-
+        if "fl_x" in data:
+            fx = data["fl_x"]
+            fy = data["fl_y"]
+            cx = data["cx"]
+            cy = data["cy"]
+            height = data["h"]
+            width = data["w"]
+            with open(str(cameras_txt), "w") as f:
+                f.write("# Camera list with one line of data per camera:\n")
+                f.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
+                f.write("# Number of cameras: 1\n")
+                f.write(
+                    f"1 {camera_model} {width} {height} {fx} {fy} {cx} {cy} 0 0 0 0\n"
+                )
+        else:
+            with open(str(cameras_txt), "w") as f:
+                f.write("# Camera list with one line of data per camera:\n")
+                f.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
+                f.write(f"# Number of cameras: {len(data['frames'])}\n")
+                for item, frame in enumerate(data["frames"]):
+                    fx = frame["fl_x"]
+                    fy = frame["fl_y"]
+                    cx = frame["cx"]
+                    cy = frame["cy"]
+                    height = frame["h"]
+                    width = frame["w"]
+                    f.write(
+                        f"{item+1} {camera_model} {width} {height} {fx} {fy} {cx} {cy} 0 0 0 0\n"
+                    )
         with open(str(images_txt), "w") as imgs_txt:
             for id, frame in enumerate(data["frames"]):
                 c2w = np.array(frame["transform_matrix"])

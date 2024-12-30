@@ -669,10 +669,6 @@ def main(
     gt_mesh = open3d_mesh_from_trimesh(gt_mesh)
     gt_mesh = gt_mesh.remove_unreferenced_vertices()
 
-    # current_vertex_count = len(gt_mesh.vertices)
-    # target_vertex_count = current_vertex_count // 2
-    # gt_mesh = gt_mesh.simplify_quadratic_decimation(target_vertex_count)
-
     pred_mesh = cut_mesh(gt_mesh, pred_mesh, kernel_size=15, dilate=True)
 
     dataset_path = gt_mesh_path / device / "long_capture"
