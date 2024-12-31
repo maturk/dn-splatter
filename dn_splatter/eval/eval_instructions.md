@@ -9,9 +9,6 @@ In this document we briefly describe the evaluation protocol and methods used in
 We include models for evaluating rgb, depth and/or mesh metrics using various method.
 The following methods are supported.
 
-Please install PyTorch3D for mesh evaluation: 
-```pip install "git+https://github.com/facebookresearch/pytorch3d.git"```
-
 ### Mesh Metrics
 
 We report the following metrics
@@ -23,12 +20,7 @@ normals_correctness  # higher better
 F-score # higher better
 ```
 
-There are two ways to evaluate a mesh:
-#### 1: Cull based on visibility
-Evaluate mesh metrics and cull the predicted mesh based on training camera view visibility. Regions of the mesh not seen in the training dataset are ignored when computing mesh metrics. This method is recommended, since it is used in various research papers. 
-
-First install Pytorch3D requirement:
-`pip install "git+https://github.com/facebookresearch/pytorch3d.git"`
+Evaluate mesh metrics and cull the predicted mesh based on training camera view visibility. Regions of the mesh not seen in the training dataset are ignored when computing mesh metrics.
 
 Run with:
 ```bash
@@ -38,18 +30,6 @@ For MuSHRoom dataset, use:
 ```bash
 python dn_splatter/eval/eval_mesh_mushroom_vis_cull.py --path-to-pd-mesh [PATH_TO_PREDICTED_PLY] --path-to-gt-mesh [PATH_TO_GT_PLY]
 ```
-
-#### 2: Evaluate entire mesh:
-Evaluate entire predicted mesh area with gt area, does not take into account visibility:
-Run with:
-```bash
-python dn_splatter/eval/eval_mesh.py --path-to-pd-mesh [PATH_TO_PREDICTED_PLY] --path-to-gt-mesh [PATH_TO_GT_PLY]
-```
-For MuSHRoom dataset, use:
-```bash
-python dn_splatter/eval/eval_mesh_mushroom.py --path-to-pd-mesh [PATH_TO_PREDICTED_PLY] --path-to-gt-mesh [PATH_TO_GT_PLY]
-```
-
 
 ### RGB/Depth metrics
 To evaluate depth estimation and novel-view rgb metrics, run the following command:
