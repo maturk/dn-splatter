@@ -25,7 +25,7 @@ example = {cmd = "pwd", depends_on=["download-omnidata", "download-data-sample",
 ## first download polycam only if ls fails (checking that file isn't already downloaded), || is used to check if file exists, if not move on to following command
 download-polycam = {cmd="ls datasets/polycam/6g-first-scan-poly.zip || wget -P datasets/polycam https://huggingface.co/datasets/pablovela5620/sample-polycam-room/resolve/main/6g-first-scan-poly.zip"}
 convert-poly-to-ns = {cmd="ls datasets/polycam/6g-first-scan-poly/transforms.json || ns-process-data polycam --data datasets/polycam/6g-first-scan-poly.zip --output-dir datasets/polycam/6g-first-scan-poly --use-depth", depends_on=["download-polycam"]}
-generate-normals = {cmd="ls datasets/polycam/6g-first-scan-poly/normals_from_pretrain/frame_00001.png || python dn_splatter/scripts/normals_from_pretrain.py --data-dir datasets/polycam/6g-first-scan-poly --model-type dsine", depends_on=["convert-poly-to-ns"]}
+generate-normals = {cmd="ls datasets/polycam/6g-first-scan-poly/normals_from_pretrain/frame_00001.png || python dn_splatter/scripts/normals_from_pretrain.py --data-dir datasets/polycam/6g-first-scan-poly --normal-format dsine", depends_on=["convert-poly-to-ns"]}
 generate-pointcloud = "ls datasets/polycam/6g-first-scan-poly/iphone_pointcloud.ply || python dn_splatter/data/mushroom_utils/pointcloud_utils.py --data-path datasets/polycam/6g-first-scan-poly"
 train-polycam = """
 ns-train dn-splatter \

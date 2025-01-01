@@ -70,8 +70,8 @@ class NRGBDDataParserConfig(DataParserConfig):
     """Set to true to use ground truth normal maps"""
     load_depths: bool = True
     """Whether to load depth maps"""
-    normal_format: Literal["opencv", "opengl"] = "opengl"
-    """Which format the normal maps in camera frame are saved in."""
+    normal_format: Literal["omnidata", "dsine"] = "omnidata"
+    """Which monocular normal network was used to generate normals (they have different coordinate systems)."""
     normals_from: Literal["depth", "pretrained"] = "depth"
     """If no ground truth normals, generate normals either from sensor depths or from pretrained model."""
     load_pcd_normals: bool = False
