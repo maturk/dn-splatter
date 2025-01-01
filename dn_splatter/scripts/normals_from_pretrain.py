@@ -56,7 +56,7 @@ class NormalsFromPretrained:
     """Whether to make low resolution or full image resolution normal estimates"""
     force_images_dir: bool = False
     """Force to use img_dir_name instead of transforms.json if found"""
-    model_type: Literal["omnidata", "dsine"] = "omnidata"
+    normal_format: Literal["omnidata", "dsine"] = "omnidata"
 
     def main(self):
         if (
@@ -70,14 +70,14 @@ class NormalsFromPretrained:
             image_paths = [
                 self.data_dir / Path(frame["file_path"]) for frame in meta["frames"]
             ]
-            if self.model_type == "omnidata":
+            if self.normal_format == "omnidata":
                 if self.resolution == "low":
                     run_monocular_normals(images=image_paths, save_path=self.save_path)
                 else:
                     run_monocular_normals_hd(
                         images=image_paths, save_path=self.save_path
                     )
-            elif self.model_type == "dsine":
+            elif self.normal_format == "dsine":
                 run_monocular_dsine(images=image_paths, save_path=self.save_path)
 
         elif len(os.listdir(self.data_dir / Path(self.img_dir_name))) != 0:
@@ -85,14 +85,14 @@ class NormalsFromPretrained:
                 f"[bold yellow]Found images in /{self.img_dir_name}, using these to generate mononormals."
             )
             image_paths = get_filename_list(self.data_dir / Path(self.img_dir_name))
-            if self.model_type == "omnidata":
+            if self.normal_format == "omnidata":
                 if self.resolution == "low":
                     run_monocular_normals(images=image_paths, save_path=self.save_path)
                 else:
                     run_monocular_normals_hd(
                         images=image_paths, save_path=self.save_path
                     )
-            elif self.model_type == "dsine":
+            elif self.normal_format == "dsine":
                 run_monocular_dsine(images=image_paths, save_path=self.save_path)
         else:
             CONSOLE.print(
@@ -412,7 +412,7 @@ def normals_from_omnidata_hd(
 def normals_from_depths(
     path_to_transforms: Path,
     save_path: Optional[Path] = None,
-    normal_format: Literal["opencv", "opengl"] = "opengl",
+    normal_format: Literal["omnidata", "dsine"] = "omnidata",
     is_euclidean_depth: bool = False,
 ) -> None:
     """Normal maps from depth maps
@@ -494,7 +494,7 @@ def normals_from_depths(
             @ torch.diag(
                 torch.tensor([1, -1, -1, 1], device=c2w.device, dtype=c2w.dtype)
             )
-            if normal_format == "opencv"
+            if normal_format == "omnidata"
             else c2w,
             device="cpu",
             smooth=False,

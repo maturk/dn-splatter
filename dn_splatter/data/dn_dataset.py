@@ -59,7 +59,7 @@ class GDataset(InputDataset):
         if "normal_format" in self.metadata:
             self.normal_format = self.metadata["normal_format"]
         else:
-            self.normal_format = "opengl"
+            self.normal_format = "omnidata"
 
         if "normal_frame" in self.metadata:
             self.normal_frame = self.metadata["normal_frame"]
@@ -204,7 +204,7 @@ class GDataset(InputDataset):
     def get_normal_image_from_path(
         self,
         path,
-        normal_format: Literal["opencv", "opengl"],
+        normal_format: Literal["omnidata", "dsine"],
         normal_frame: Literal["camera_frame", "world_frame"],
         c2w: Optional[None] = None,
     ):
@@ -212,7 +212,7 @@ class GDataset(InputDataset):
 
         Args:
             path: path to normal file
-            normal_format: which format "opencv" or "opengl" the normal data is stored in. We convert automatically to opencv
+            normal_format: which format "omnidata" or "dsine" the normal data is stored in. We convert automatically to omnidata format.
             c2w: optional c2w transform if normals should be in world frame
         """
         if path.suffix == ".png":
@@ -226,7 +226,7 @@ class GDataset(InputDataset):
 
         normal_map = torch.from_numpy(normal_map.astype("float32") / 255.0).float()
 
-        if normal_format == "opengl" and normal_frame == "camera_frame":
+        if normal_format == "omnidata" and normal_frame == "camera_frame":
             # convert normal map from opengl to opencv
             h, w, _ = normal_map.shape
             normal_map = normal_map.view(-1, 3)

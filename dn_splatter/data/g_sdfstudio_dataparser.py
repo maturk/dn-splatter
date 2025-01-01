@@ -246,7 +246,7 @@ class GSDFStudioDataparser(DataParser):
 
         # Safety check to make sure we load correct normal conventions
         if self.config.load_for_sdfstudio:
-            normal_format = "opengl"
+            normal_format = "dsine"
             normal_frame = "world_frame"
         else:
             normal_format = "opengl"

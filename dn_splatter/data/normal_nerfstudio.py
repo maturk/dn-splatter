@@ -45,10 +45,12 @@ class NormalNerfstudioConfig(NerfstudioDataParserConfig):
     """Set to true to load normal maps"""
     load_depths: bool = True
     """Whether to load depth maps"""
-    normal_format: Literal["opencv", "opengl"] = "opengl"
-    """Which format the normal maps in camera frame are saved in."""
+    normal_format: Literal["omnidata", "dsine"] = "omnidata"
+    """Which monocular normal network was used to generate normals (they have different coordinate systems)."""
     load_pcd_normals: bool = True
     """Whether to load pcd normals for normal initialisation"""
+    load_depth_confidence_masks: bool = False
+    """Whether to load depth confidence masks"""
 
 
 @dataclass
@@ -60,7 +62,12 @@ class NormalNerfstudio(Nerfstudio):
 
     def get_normal_filepaths(self):
         return natsorted(glob.glob(f"{self.normal_save_dir}/*.png"))
-    
+
+    def get_confidence_filepaths(self):
+        """Helper to load confidence paths"""
+        confidence_list = natsorted(glob.glob(f"{self.confidence_save_dir}/*.jpg"))
+        return confidence_list
+
     def get_depth_filepaths(self):
         depth_paths = natsorted(
             glob.glob(f"{self.config.data}/mono_depth/*_aligned.npy")
@@ -367,6 +374,7 @@ class NormalNerfstudio(Nerfstudio):
         # Only add fisheye crop radius parameter if the images are actually fisheye, to allow the same config to be used
         # for both fisheye and non-fisheye datasets.
         metadata = {}
+
         if (camera_type in [CameraType.FISHEYE, CameraType.FISHEYE624]) and (
             fisheye_crop_radius is not None
         ):
@@ -424,7 +432,7 @@ class NormalNerfstudio(Nerfstudio):
         # reinitialize metadata for dataparser_outputs
         metadata = {}
 
-        if self.config.load_depths and len(depth_filenames)==0:
+        if self.config.load_depths and len(depth_filenames) == 0:
             depth_filenames = self.get_depth_filepaths()
             metadata["mono_depth_filenames"] = [
                 Path(depth_filenames[i]) for i in indices
@@ -510,6 +518,16 @@ class NormalNerfstudio(Nerfstudio):
             metadata["normal_filenames"] = normal_filenames
             metadata["load_normals"] = True
             metadata["normal_format"] = self.config.normal_format
+
+        metadata.update({"load_confidence": self.config.load_depth_confidence_masks})
+        if self.config.load_depth_confidence_masks:
+            self.confidence_save_dir = self.config.data / Path("depth_normals_mask")
+            if not (self.confidence_save_dir).exists():
+                CONSOLE.log(
+                    f"[yellow]Could not find depth confidence masks, remember to run depth_normal_consistency.py to generate them."
+                )
+            confidence_filenames = self.get_confidence_filepaths()
+            metadata.update({"confidence_filenames": confidence_filenames})
 
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
