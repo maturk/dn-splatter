@@ -69,7 +69,7 @@ https://github.com/maturk/dn-splatter/assets/30566358/9b3ffe9d-5fe9-4b8c-8426-d5
     ```bash
     conda activate nerfstudio
     git clone https://github.com/maturk/dn-splatter
-    cd dn_splatter/
+    cd dn-splatter/
     pip install setuptools==69.5.1
     pip install -e .
     ```
@@ -82,7 +82,7 @@ Download the [pixi package manager](https://pixi.sh/latest/), this will manage t
 Clone and install DN-Splatter
 ```bash
 git clone https://github.com/maturk/dn-splatter
-cd dn_splatter/
+cd dn-splatter/
 pixi install
 ```
 
