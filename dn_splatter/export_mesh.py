@@ -723,6 +723,7 @@ class MarchingCubesMesh(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         CONSOLE.print("Extracting mesh with marching cubes... which may take a while")
         with torch.no_grad():
@@ -780,6 +781,20 @@ class MarchingCubesMesh(GSMeshExporter):
                     torch.from_numpy(vertices).float()
                 )[..., 0]
                 verts_colors = model.colors[closest_gaussians].cpu().numpy()
+
+                if crop_box is not None:
+                   verts_tensor = torch.from_numpy(vertices).float().to(crop_box.T.device)
+                   inside_crop = crop_box.within(verts_tensor).cpu().numpy()
+                   if inside_crop.sum() == 0:
+                       CONSOLE.print("[yellow]Warning: No mesh vertices within crop box[/yellow]")
+
+                   vertex_map = -np.ones(len(vertices), dtype=int)
+                   vertex_map[inside_crop] = np.arange(inside_crop.sum())
+                   triangles_mask = np.all(inside_crop[triangles], axis=1)
+                   triangles = vertex_map[triangles[triangles_mask]]
+                   vertices = vertices[inside_crop]
+                   verts_colors = verts_colors[inside_crop]
+
                 mesh = o3d.geometry.TriangleMesh()
                 mesh.vertices = o3d.utility.Vector3dVector(vertices)
                 mesh.triangles = o3d.utility.Vector3iVector(triangles)
