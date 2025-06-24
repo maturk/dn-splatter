@@ -20,6 +20,7 @@ from dn_splatter.utils.camera_utils import (
 )
 from nerfstudio.cameras.cameras import Cameras
 from nerfstudio.models.splatfacto import SplatfactoModel
+from nerfstudio.data.scene_box import OrientedBox
 from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.utils.rich_utils import CONSOLE
 
@@ -97,6 +98,31 @@ class GSMeshExporter:
     """Path to the trained config YAML file."""
     output_dir: Path = Path("./mesh_exports/")
     """Path to the output directory."""
+
+    cropbox_pos: Optional[Annotated[Tuple[float, float, float], "x, y, z"]] = None
+    """Cropbox position for the mesh."""
+    cropbox_rpy: Optional[Annotated[Tuple[float, float, float], "rx, ry, rz"]] = None
+    """Cropbox rotation for the mesh."""
+    cropbox_scale: Optional[Annotated[Tuple[float, float, float], "sx, sy, sz"]] = None
+    """Cropbox scale for the mesh."""
+
+    def cropbox(self) -> Optional[OrientedBox]:
+        """Returns the cropbox for the mesh."""
+        if self.cropbox_pos is None and self.cropbox_rpy is None and self.cropbox_scale is None:
+            return None
+
+        if self.cropbox_pos is None:
+            self.cropbox_pos = (0.0, 0.0, 0.0)
+        if self.cropbox_rpy is None:
+            self.cropbox_rpy = (0.0, 0.0, 0.0)
+        if self.cropbox_scale is None:
+            self.cropbox_scale = (1.0, 1.0, 1.0)
+
+        return OrientedBox(
+            pos=self.cropbox_pos,
+            rpy=self.cropbox_rpy,
+            scale=self.cropbox_scale,
+        )
 
 
 @dataclass
