@@ -157,6 +157,7 @@ class GaussiansToPoisson(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         with torch.no_grad():
             positions = model.means.cpu()
@@ -265,6 +266,15 @@ class GaussiansToPoisson(GSMeshExporter):
             positions = positions.cpu().numpy()
             normals = normals.cpu().numpy()
             colors = colors.cpu().numpy()
+
+            if crop_box is not None:
+                pts = torch.from_numpy(positions).float().to(crop_box.T.device)
+                inside_crop = crop_box.within(pts).cpu().numpy()
+                if inside_crop.sum() == 0:
+                    CONSOLE.print("[yellow]Warning: No points within crop box[/yellow]")
+                positions = positions[inside_crop]
+                normals = normals[inside_crop]
+                colors = colors[inside_crop]
 
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(positions)
