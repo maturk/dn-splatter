@@ -946,6 +946,7 @@ class Open3DTSDFFusion(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         volume = o3d.pipelines.integration.ScalableTSDFVolume(
             voxel_length=self.voxel_size,
@@ -964,7 +965,10 @@ class Open3DTSDFFusion(GSMeshExporter):
                 if "mask" in data:
                     mask = data["mask"]
                 camera = cameras[image_idx : image_idx + 1]
-                outputs = model.get_outputs_for_camera(camera=camera)
+                outputs = model.get_outputs_for_camera(
+                    camera=camera,
+                    obb_box=crop_box,
+                )
                 assert "depth" in outputs
                 depth_map = outputs["depth"]
                 c2w = torch.eye(4, dtype=torch.float, device=depth_map.device)
