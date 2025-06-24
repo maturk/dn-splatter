@@ -539,6 +539,7 @@ class LevelSetExtractor(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         # assert hasattr(pipeline.model,"compute_level_surface_points_from_camera_fast")
 
@@ -580,6 +581,14 @@ class LevelSetExtractor(GSMeshExporter):
                     img_surface_points = frame_outputs[surface_level]["points"]
                     img_surface_colors = frame_outputs[surface_level]["colors"]
                     img_surface_normals = frame_outputs[surface_level]["normals"]
+
+                    if crop_box is not None:
+                        inside_crop = crop_box.within(img_surface_points).squeeze()
+                        if inside_crop.sum() == 0:
+                            continue
+                        img_surface_points = img_surface_points[inside_crop]
+                        img_surface_colors = img_surface_colors[inside_crop]
+                        img_surface_normals = img_surface_normals[inside_crop]
 
                     surface_levels_outputs[surface_level]["points"] = torch.cat(
                         [
