@@ -346,6 +346,7 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         with torch.no_grad():
             cameras: Cameras = pipeline.datamanager.train_dataset.cameras  # type: ignore
@@ -457,6 +458,14 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
 
                     normal_map = outputs["surface_normal"].cpu()
                     normal_map = normal_map.view(-1, 3)[indices]
+
+                if crop_box is not None:
+                    inside_crop = crop_box.within(xyzs).squeeze()
+                    if inside_crop.sum() == 0:
+                        continue
+                    xyzs = xyzs[inside_crop]
+                    rgbs = rgbs[inside_crop]
+                    normal_map = normal_map[inside_crop]
 
                 points.append(xyzs)
                 colors.append(rgbs)
