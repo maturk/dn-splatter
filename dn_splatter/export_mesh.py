@@ -118,7 +118,7 @@ class GSMeshExporter:
         if self.cropbox_scale is None:
             self.cropbox_scale = (1.0, 1.0, 1.0)
 
-        return OrientedBox(
+        return OrientedBox.from_params(
             pos=self.cropbox_pos,
             rpy=self.cropbox_rpy,
             scale=self.cropbox_scale,
