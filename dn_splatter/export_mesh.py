@@ -20,6 +20,7 @@ from dn_splatter.utils.camera_utils import (
 )
 from nerfstudio.cameras.cameras import Cameras
 from nerfstudio.models.splatfacto import SplatfactoModel
+from nerfstudio.data.scene_box import OrientedBox
 from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.utils.rich_utils import CONSOLE
 
@@ -98,6 +99,31 @@ class GSMeshExporter:
     output_dir: Path = Path("./mesh_exports/")
     """Path to the output directory."""
 
+    cropbox_pos: Optional[Annotated[Tuple[float, float, float], "x, y, z"]] = None
+    """Cropbox position for the mesh."""
+    cropbox_rpy: Optional[Annotated[Tuple[float, float, float], "rx, ry, rz"]] = None
+    """Cropbox rotation for the mesh."""
+    cropbox_scale: Optional[Annotated[Tuple[float, float, float], "sx, sy, sz"]] = None
+    """Cropbox scale for the mesh."""
+
+    def cropbox(self) -> Optional[OrientedBox]:
+        """Returns the cropbox for the mesh."""
+        if self.cropbox_pos is None and self.cropbox_rpy is None and self.cropbox_scale is None:
+            return None
+
+        if self.cropbox_pos is None:
+            self.cropbox_pos = (0.0, 0.0, 0.0)
+        if self.cropbox_rpy is None:
+            self.cropbox_rpy = (0.0, 0.0, 0.0)
+        if self.cropbox_scale is None:
+            self.cropbox_scale = (1.0, 1.0, 1.0)
+
+        return OrientedBox.from_params(
+            pos=self.cropbox_pos,
+            rpy=self.cropbox_rpy,
+            scale=self.cropbox_scale,
+        )
+
 
 @dataclass
 class GaussiansToPoisson(GSMeshExporter):
@@ -131,6 +157,7 @@ class GaussiansToPoisson(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         with torch.no_grad():
             positions = model.means.cpu()
@@ -240,6 +267,15 @@ class GaussiansToPoisson(GSMeshExporter):
             normals = normals.cpu().numpy()
             colors = colors.cpu().numpy()
 
+            if crop_box is not None:
+                pts = torch.from_numpy(positions).float().to(crop_box.T.device)
+                inside_crop = crop_box.within(pts).cpu().numpy()
+                if inside_crop.sum() == 0:
+                    CONSOLE.print("[yellow]Warning: No points within crop box[/yellow]")
+                positions = positions[inside_crop]
+                normals = normals[inside_crop]
+                colors = colors[inside_crop]
+
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(positions)
             pcd.normals = o3d.utility.Vector3dVector(normals)
@@ -310,6 +346,7 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         with torch.no_grad():
             cameras: Cameras = pipeline.datamanager.train_dataset.cameras  # type: ignore
@@ -422,6 +459,14 @@ class DepthAndNormalMapsPoisson(GSMeshExporter):
                     normal_map = outputs["surface_normal"].cpu()
                     normal_map = normal_map.view(-1, 3)[indices]
 
+                if crop_box is not None:
+                    inside_crop = crop_box.within(xyzs).squeeze()
+                    if inside_crop.sum() == 0:
+                        continue
+                    xyzs = xyzs[inside_crop]
+                    rgbs = rgbs[inside_crop]
+                    normal_map = normal_map[inside_crop]
+
                 points.append(xyzs)
                 colors.append(rgbs)
                 normals.append(normal_map)
@@ -494,6 +539,7 @@ class LevelSetExtractor(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         # assert hasattr(pipeline.model,"compute_level_surface_points_from_camera_fast")
 
@@ -535,6 +581,14 @@ class LevelSetExtractor(GSMeshExporter):
                     img_surface_points = frame_outputs[surface_level]["points"]
                     img_surface_colors = frame_outputs[surface_level]["colors"]
                     img_surface_normals = frame_outputs[surface_level]["normals"]
+
+                    if crop_box is not None:
+                        inside_crop = crop_box.within(img_surface_points).squeeze()
+                        if inside_crop.sum() == 0:
+                            continue
+                        img_surface_points = img_surface_points[inside_crop]
+                        img_surface_colors = img_surface_colors[inside_crop]
+                        img_surface_normals = img_surface_normals[inside_crop]
 
                     surface_levels_outputs[surface_level]["points"] = torch.cat(
                         [
@@ -669,6 +723,7 @@ class MarchingCubesMesh(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         CONSOLE.print("Extracting mesh with marching cubes... which may take a while")
         with torch.no_grad():
@@ -681,70 +736,88 @@ class MarchingCubesMesh(GSMeshExporter):
                 self.camera_radius_multiplier
                 * torch.norm(centers - avg_center, dim=-1).max().item()
             )
-            # voxel grid to sample
+            # voxel grid to sample (in model/world coordinates)
             X = torch.linspace(-1, 1, self.resolution) * radius
             Y = torch.linspace(-1, 1, self.resolution) * radius
             Z = torch.linspace(-1, 1, self.resolution) * radius
             xx, yy, zz = torch.meshgrid(X, Y, Z, indexing="ij")
-            samples = torch.cat(
-                [xx.reshape(-1, 1), yy.reshape(-1, 1), zz.reshape(-1, 1)], dim=-1
-            ).to(model.device)
+            grid_coords = torch.stack([xx, yy, zz], dim=-1).reshape(-1, 3)
+
+            # Mask out-of-cropbox points in model/world coordinates
+            if crop_box is not None:
+                mask = crop_box.within(grid_coords)
+            else:
+                mask = torch.ones(grid_coords.shape[0], dtype=torch.bool, device=grid_coords.device)
+
+            # Only query densities for points inside cropbox
+            samples = grid_coords[mask].to(model.device)
             total_samples = len(samples)
-            densities = torch.zeros(0, device=model.device)
+            densities_flat = torch.zeros(grid_coords.shape[0], device=model.device)
 
             CONSOLE.print("Computing voxel grid densities...")
             with torch.no_grad():
+                densities_inside = []
                 for batch_index in range(0, total_samples, self.batch_size):
                     CONSOLE.print(
                         f"[bold green]Processing batch {batch_index // self.batch_size} / {total_samples//self.batch_size}"
                     )
                     batch_samples = samples[batch_index : batch_index + self.batch_size]
                     batch_densities = model.get_density(batch_samples)
-                    CONSOLE.print(
-                        f"minimum density: {batch_densities.min():.2f}, maximum density: {batch_densities.max():.2f}, average: {batch_densities.mean():.2f}"
-                    )
-                    densities = torch.cat([densities, batch_densities], dim=0)
-                densities = densities.reshape(
-                    self.resolution, self.resolution, self.resolution
-                )
-                CONSOLE.print(
-                    f"Computing mesh for surface level {self.isosurface_threshold}"
-                )
-                vertices, triangles = mcubes.marching_cubes(
-                    densities.cpu().numpy(), self.isosurface_threshold
-                )
-                # go back to world frame from normalised vertices
-                vertices = (
-                    2
-                    * self.camera_radius_multiplier
-                    * radius
-                    * (vertices / self.resolution)
-                    - radius
-                )
-                # vertices = max_bbox + (vertices / self.resolution) - min_bbox
-                closest_gaussians = model.get_closest_gaussians(
-                    torch.from_numpy(vertices).float()
-                )[..., 0]
-                verts_colors = model.colors[closest_gaussians].cpu().numpy()
-                mesh = o3d.geometry.TriangleMesh()
-                mesh.vertices = o3d.utility.Vector3dVector(vertices)
-                mesh.triangles = o3d.utility.Vector3iVector(triangles)
-                mesh.vertex_colors = o3d.utility.Vector3dVector(verts_colors)
+                    densities_inside.append(batch_densities)
+                densities_inside = torch.cat(densities_inside, dim=0)
+                densities_flat[mask] = densities_inside
+                densities = densities_flat.reshape(self.resolution, self.resolution, self.resolution)
 
-                o3d.io.write_triangle_mesh(
-                    str(self.output_dir / f"marching_cubes_raw_{self.resolution}.ply"),
-                    mesh,
-                )
-                # simplify mesh
-                if self.target_triangles is not None:
-                    mesh = mesh.simplify_quadric_decimation(self.target_triangles)
+            # Optionally, mask out-of-cropbox voxels to a low value so marching cubes ignores them
+            if crop_box is not None:
+                densities[~mask.reshape(self.resolution, self.resolution, self.resolution)] = -1e6
 
-                CONSOLE.print(
-                    f"Finished computing mesh: {str(self.output_dir / f'marching_cubes_{self.resolution}.ply')}"
-                )
-                o3d.io.write_triangle_mesh(
-                    str(self.output_dir / f"marching_cubes_{self.resolution}.ply"), mesh
-                )
+            CONSOLE.print(
+                f"Computing mesh for surface level {self.isosurface_threshold}"
+            )
+            vertices, triangles = mcubes.marching_cubes(
+                densities.cpu().numpy(), self.isosurface_threshold
+            )
+            # Map vertices back to world coordinates
+            # marching cubes returns vertices in voxel index coordinates, so map to world/model coordinates
+
+            # Convert X, Y, Z to numpy for numpy operations
+            X_np = X.cpu().numpy() if torch.is_tensor(X) else np.asarray(X)
+            Y_np = Y.cpu().numpy() if torch.is_tensor(Y) else np.asarray(Y)
+            Z_np = Z.cpu().numpy() if torch.is_tensor(Z) else np.asarray(Z)
+
+            v_x = vertices[:, 0] / (self.resolution - 1)
+            v_y = vertices[:, 1] / (self.resolution - 1)
+            v_z = vertices[:, 2] / (self.resolution - 1)
+            world_x = X_np[0] + v_x * (X_np[-1] - X_np[0])
+            world_y = Y_np[0] + v_y * (Y_np[-1] - Y_np[0])
+            world_z = Z_np[0] + v_z * (Z_np[-1] - Z_np[0])
+            vertices_world = np.stack([world_x, world_y, world_z], axis=-1)
+
+            closest_gaussians = model.get_closest_gaussians(
+                torch.from_numpy(vertices_world).float().to(model.device)
+            )[..., 0]
+            verts_colors = model.colors[closest_gaussians].cpu().numpy()
+
+            mesh = o3d.geometry.TriangleMesh()
+            mesh.vertices = o3d.utility.Vector3dVector(vertices_world)
+            mesh.triangles = o3d.utility.Vector3iVector(triangles)
+            mesh.vertex_colors = o3d.utility.Vector3dVector(verts_colors)
+
+            o3d.io.write_triangle_mesh(
+                str(self.output_dir / f"marching_cubes_raw_{self.resolution}.ply"),
+                mesh,
+            )
+            # simplify mesh
+            if self.target_triangles is not None:
+                mesh = mesh.simplify_quadric_decimation(self.target_triangles)
+
+            CONSOLE.print(
+                f"Finished computing mesh: {str(self.output_dir / f'marching_cubes_{self.resolution}.ply')}"
+            )
+            o3d.io.write_triangle_mesh(
+                str(self.output_dir / f"marching_cubes_{self.resolution}.ply"), mesh
+            )
 
 
 @dataclass
@@ -773,6 +846,7 @@ class TSDFFusion(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         TSDFvolume = vdbfusion.VDBVolume(
             voxel_size=self.voxel_size, sdf_trunc=self.sdf_truc, space_carving=True
@@ -793,7 +867,10 @@ class TSDFFusion(GSMeshExporter):
                 if "mask" in data:
                     mask = data["mask"]
                 camera = cameras[image_idx : image_idx + 1]
-                outputs = model.get_outputs_for_camera(camera=camera)
+                outputs = model.get_outputs_for_camera(
+                    camera=camera,
+                    obb_box=crop_box
+                )
                 assert "depth" in outputs
                 depth_map = outputs["depth"]
                 c2w = torch.eye(4, dtype=torch.float, device=depth_map.device)
@@ -873,6 +950,7 @@ class Open3DTSDFFusion(GSMeshExporter):
         assert isinstance(pipeline.model, SplatfactoModel)
 
         model: SplatfactoModel = pipeline.model
+        crop_box = self.cropbox()
 
         volume = o3d.pipelines.integration.ScalableTSDFVolume(
             voxel_length=self.voxel_size,
@@ -891,7 +969,10 @@ class Open3DTSDFFusion(GSMeshExporter):
                 if "mask" in data:
                     mask = data["mask"]
                 camera = cameras[image_idx : image_idx + 1]
-                outputs = model.get_outputs_for_camera(camera=camera)
+                outputs = model.get_outputs_for_camera(
+                    camera=camera,
+                    obb_box=crop_box,
+                )
                 assert "depth" in outputs
                 depth_map = outputs["depth"]
                 c2w = torch.eye(4, dtype=torch.float, device=depth_map.device)
