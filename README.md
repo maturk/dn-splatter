@@ -161,7 +161,7 @@ This script generates sfm_depths/ and mono_depth/ directories in the data root:
 
 ```
 <data>
-|---image_path
+|---images
 |   |---<image 0>
 |   |---<image 1>
 |   |---...
@@ -337,7 +337,7 @@ For arbitrary COLMAP processed datasets, we expect the following directory struc
 
 ```
 <base_dir>
-|---image_path
+|---images
 |   |---<image 0>
 |   |---<image 1>
 |   |---...

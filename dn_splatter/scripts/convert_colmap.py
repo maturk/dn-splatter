@@ -3,12 +3,13 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+from nerfstudio.process_data import colmap_utils, hloc_utils
 
 import tyro
 
 """
 <base_dir>
-|---image_path
+|---images
 |   |---<image 0>
 |   |---<image 1>
 |   |---...
@@ -143,6 +144,12 @@ class ConvertColmap:
 
         if self.resize:
             raise NotImplementedError
+
+        print("creating transforms.json and sparse_pc.ply")
+        recon_dir = Path(base_dir, "colmap/sparse/0")
+        output_dir = Path(base_dir)
+        colmap_utils.colmap_to_json(recon_dir, output_dir)
+        print("DONE, Congratulation")
 
 
 if __name__ == "__main__":
